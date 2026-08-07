@@ -126,8 +126,10 @@
   .court-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
   .match-card{
     border:1px solid rgba(18,48,44,0.1); border-radius:12px; padding:14px 16px; background:#fff;
-    transition:box-shadow .15s ease;
+    transition:box-shadow .15s ease, transform .15s ease; cursor:pointer;
   }
+  .match-card:hover{ box-shadow:0 6px 18px -8px rgba(11,79,74,0.35); transform:translateY(-1px); }
+  .match-card:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
   .match-card.decided{ box-shadow:0 0 0 2px var(--amber) inset; }
   .match-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
   .court-badge{ display:flex; align-items:center; gap:8px; }
@@ -138,16 +140,20 @@
   .pending-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); font-style:italic;}
   .versus{ display:flex; align-items:flex-start; gap:10px; margin:8px 0 12px;}
   .versus .side{ flex:1; }
+  .versus .side.winner .side-name{ color:var(--court-deep); }
   .versus .side-name{ font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
-  .versus .player-line{
-    font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-soft); margin-top:3px;
-    outline:none; min-height:14px; border-bottom:1px dashed transparent;
+  .versus .player-summary{
+    font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-soft); margin-top:3px; min-height:14px;
   }
-  .versus .player-line:hover, .versus .player-line:focus{ border-bottom-color:var(--amber); }
-  .versus .player-line:focus{ background:#fff; }
-  .versus .player-line:empty:before{ content:attr(data-placeholder); color:rgba(18,48,44,0.35); }
+  .versus .player-summary.empty{ color:rgba(18,48,44,0.4); font-style:italic; }
   .versus .vs{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card-alt); padding:3px 7px; border-radius:6px; align-self:center;}
-  .win-row{ display:flex; gap:8px; margin-bottom:8px;}
+  .match-status-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .score-pill{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-soft); background:var(--card-alt);
+    padding:4px 9px; border-radius:100px;
+  }
+  .winner-tag{ font-size:12px; font-weight:700; color:var(--court-deep); }
+  .tap-hint{ font-size:11.5px; color:var(--ink-soft); font-style:italic; opacity:0.8; }
   .win-btn{
     flex:1; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 6px; border-radius:8px;
     border:1px solid rgba(18,48,44,0.18); background:#fff; color:var(--ink); cursor:pointer; text-align:center;
@@ -166,6 +172,40 @@
   }
   .score-input:focus{ outline:2px solid var(--amber); background:#fff;}
   .score-input::placeholder{ color:rgba(18,48,44,0.35);}
+
+  /* ---------- MATCH STATUS MODAL ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:100; background:rgba(11,48,44,0.55); display:none;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-panel{
+    background:#fff; border-radius:16px; padding:26px 26px 22px; max-width:460px; width:100%;
+    max-height:88vh; overflow-y:auto; box-shadow:0 24px 60px -20px rgba(0,0,0,0.5); position:relative;
+  }
+  .modal-close{
+    position:absolute; top:12px; right:12px; background:none; border:none; font-size:22px; line-height:1;
+    color:var(--ink-soft); cursor:pointer; padding:6px; border-radius:8px;
+  }
+  .modal-close:hover{ color:var(--ink); background:var(--card-alt); }
+  .modal-title{ font-size:23px; color:var(--court-deep); margin-top:4px; padding-right:24px;}
+  .modal-meta{ font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .modal-side{ margin-top:16px; padding:14px 16px; background:var(--card-alt); border-radius:12px;}
+  .modal-side.winner{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .modal-side h4{ font-size:17px; color:var(--court-deep); margin-bottom:8px;}
+  .player-select{
+    width:100%; font-family:'Inter',sans-serif; font-size:14px; padding:9px 10px; border-radius:8px;
+    border:1px solid rgba(18,48,44,0.18); background:#fff; color:var(--ink); margin-top:8px;
+  }
+  .player-select:first-of-type{ margin-top:0; }
+  .player-select:focus{ outline:2px solid var(--amber); }
+  .modal-win-row{ display:flex; gap:8px; margin-top:18px;}
+  .modal-score{ margin-top:16px; }
+  .modal-score label{
+    font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace; display:block; margin-bottom:6px;
+  }
+  .modal-footer{ margin-top:20px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
 
   /* ---------- TIE PROGRESS (rounds 2/3) ---------- */
   .tie-list{ margin-top:22px; }
@@ -224,9 +264,10 @@
     .status-banner{ flex-wrap:wrap; padding:16px 18px; }
     .status-banner .txt h3{ font-size:22px; }
     /* Inputs & contenteditable fields at 16px+ prevents iOS Safari auto-zoom on focus */
-    .score-input, .team-name, .roster [contenteditable], .slot-time, .player-line{ font-size:16px; }
+    .score-input, .team-name, .roster [contenteditable], .slot-time, .player-select{ font-size:16px; }
     .roster{ font-size:14px; }
     th, td{ padding:9px 8px; font-size:12.5px; white-space:nowrap; }
+    .modal-panel{ padding:20px 18px 18px; }
   }
   @media print{
     body{ background:#fff; }
@@ -331,6 +372,11 @@
   </footer>
 </div>
 
+<!-- MATCH STATUS MODAL (referee view) -->
+<div class="modal-overlay" id="match-modal-overlay" onclick="if(event.target===this) window.__closeMatch()">
+  <div class="modal-panel" id="match-modal-panel" role="dialog" aria-modal="true"></div>
+</div>
+
 <script>
 (function(){
   const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
@@ -427,14 +473,28 @@
   }
   function getTeamNameSafe(idx){ return esc(getTeamName(idx)); }
 
+  function rosterFor(teamIdx){
+    const saved = SAVED && SAVED.players && SAVED.players[teamIdx];
+    return Array.from({length:12}, (_,p)=> (saved && saved[p]) ? saved[p] : ("Player "+(p+1)));
+  }
+
   function findMatch(id){ return matches.find(m=>m.id===id); }
+
+  let currentMatchId = null;
+
+  function isDoublesCategory(category){ return category==="MD" || category==="WD" || category==="XD"; }
 
   function scorePlaceholder(category){
     return (category==="MS" || category==="WS") ? "Score e.g. 11-7" : "Score e.g. 15-12";
   }
 
   function playerPlaceholder(category){
-    return (category==="MS" || category==="WS") ? "Player name" : "Player 1 & Player 2";
+    return isDoublesCategory(category) ? "Player 1 & Player 2" : "Player name";
+  }
+
+  function formatPlayerDisplay(raw){
+    if(!raw) return "";
+    return raw.split(" & ").filter(Boolean).join(" & ");
   }
 
   // ---------- RENDER: ROUND 1 SCHEDULE ----------
@@ -443,9 +503,11 @@
     const nameA = getTeamNameSafe(pair[0]);
     const nameB = getTeamNameSafe(pair[1]);
     const decided = m.winner !== null;
-    const placeholder = esc(playerPlaceholder(m.category));
+    const playerAText = m.playerA ? esc(formatPlayerDisplay(m.playerA)) : esc(playerPlaceholder(m.category));
+    const playerBText = m.playerB ? esc(formatPlayerDisplay(m.playerB)) : esc(playerPlaceholder(m.category));
     return `
-      <div class="match-card ${decided?'decided':''}">
+      <div class="match-card ${decided?'decided':''}" role="button" tabindex="0"
+           onclick="window.__openMatch('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__openMatch('${m.id}')}">
         <div class="match-top">
           <div class="court-badge">
             <div class="court-icon"></div>
@@ -454,22 +516,20 @@
           <span class="cat-tag">${CAT_LABEL[m.category]}</span>
         </div>
         <div class="versus">
-          <div class="side">
+          <div class="side ${m.winner===0?'winner':''}">
             <div class="side-name">${nameA}</div>
-            <div class="player-line" contenteditable="true" data-placeholder="${placeholder}" oninput="window.__setPlayer('${m.id}','A', this)">${esc(m.playerA)}</div>
+            <div class="player-summary ${m.playerA?'':'empty'}">${playerAText}</div>
           </div>
           <div class="vs">TIE ${m.tie+1}</div>
-          <div class="side" style="text-align:right">
+          <div class="side ${m.winner===1?'winner':''}" style="text-align:right">
             <div class="side-name">${nameB}</div>
-            <div class="player-line" contenteditable="true" data-placeholder="${placeholder}" oninput="window.__setPlayer('${m.id}','B', this)">${esc(m.playerB)}</div>
+            <div class="player-summary ${m.playerB?'':'empty'}">${playerBText}</div>
           </div>
         </div>
-        <div class="win-row">
-          <button class="win-btn ${m.winner===0?'active':''}" onclick="window.__setWinner('${m.id}',0)">${nameA} won</button>
-          <button class="win-btn ${m.winner===1?'active':''}" onclick="window.__setWinner('${m.id}',1)">${nameB} won</button>
+        <div class="match-status-row">
+          ${decided ? `<span class="winner-tag">${m.winner===0?nameA:nameB} won</span>` : `<span class="tap-hint">Tap to enter result</span>`}
+          ${m.score ? `<span class="score-pill">${esc(m.score)}</span>` : ""}
         </div>
-        ${decided ? `<button class="clear-btn" onclick="window.__setWinner('${m.id}',null)">Clear result</button>` : ""}
-        <input class="score-input" placeholder="${scorePlaceholder(m.category)}" value="${m.score}" oninput="window.__setScore('${m.id}', this.value)">
       </div>
     `;
   }
@@ -495,6 +555,85 @@
     });
     container.innerHTML = html;
   }
+
+  // ---------- MATCH STATUS MODAL (referee view) ----------
+  function playerSelectHTML(m, side, slotIdx, teamIdx){
+    const roster = rosterFor(teamIdx);
+    const rawVal = side==='A' ? m.playerA : m.playerB;
+    const parts = isDoublesCategory(m.category) ? (rawVal ? rawVal.split(" & ") : []) : [rawVal || ""];
+    const selected = parts[slotIdx] || "";
+    const opts = ['<option value="">— Select player —</option>']
+      .concat(roster.map(n => `<option value="${esc(n)}" ${n===selected?'selected':''}>${esc(n)}</option>`));
+    return `<select class="player-select" onchange="window.__setPlayerSlot('${m.id}','${side}',${slotIdx},this.value)">${opts.join("")}</select>`;
+  }
+
+  function matchSideModalHTML(m, side, teamIdx, teamName){
+    const doubles = isDoublesCategory(m.category);
+    const isWinner = (side==='A' && m.winner===0) || (side==='B' && m.winner===1);
+    return `
+      <div class="modal-side ${isWinner?'winner':''}">
+        <h4>${esc(teamName)}</h4>
+        ${playerSelectHTML(m, side, 0, teamIdx)}
+        ${doubles ? playerSelectHTML(m, side, 1, teamIdx) : ""}
+      </div>
+    `;
+  }
+
+  function renderMatchModal(m){
+    const panel = document.getElementById("match-modal-panel");
+    if(!panel) return;
+    const pair = PAIRS[m.tie];
+    const nameA = getTeamName(pair[0]);
+    const nameB = getTeamName(pair[1]);
+    panel.innerHTML = `
+      <button class="modal-close" onclick="window.__closeMatch()" aria-label="Close">&times;</button>
+      <div class="eyebrow">Tie ${m.tie+1} · Court ${m.court} · ${SLOT_TIMES[m.slot]}</div>
+      <h3 class="modal-title">${CAT_LABEL[m.category]}</h3>
+      <div class="modal-meta">${esc(nameA)} vs ${esc(nameB)}</div>
+      ${matchSideModalHTML(m, 'A', pair[0], nameA)}
+      ${matchSideModalHTML(m, 'B', pair[1], nameB)}
+      <div class="modal-win-row">
+        <button class="win-btn ${m.winner===0?'active':''}" onclick="window.__setWinner('${m.id}',0)">${esc(nameA)} won</button>
+        <button class="win-btn ${m.winner===1?'active':''}" onclick="window.__setWinner('${m.id}',1)">${esc(nameB)} won</button>
+      </div>
+      <div class="modal-score">
+        <label for="modal-score-input">Score</label>
+        <input id="modal-score-input" class="score-input" placeholder="${scorePlaceholder(m.category)}" value="${esc(m.score)}" oninput="window.__setScore('${m.id}', this.value)">
+      </div>
+      <div class="modal-footer">
+        ${m.winner!==null ? `<button class="clear-btn" onclick="window.__setWinner('${m.id}',null)">Clear result</button>` : `<span></span>`}
+        <button class="win-btn" style="flex:none; padding:9px 22px;" onclick="window.__closeMatch()">Done</button>
+      </div>
+    `;
+  }
+
+  window.__openMatch = function(id){
+    currentMatchId = id;
+    renderMatchModal(findMatch(id));
+    document.getElementById("match-modal-overlay").classList.add("open");
+  };
+  window.__closeMatch = function(){
+    currentMatchId = null;
+    document.getElementById("match-modal-overlay").classList.remove("open");
+  };
+  window.__setPlayerSlot = function(id, side, slotIdx, value){
+    const m = findMatch(id);
+    const key = side==='A' ? 'playerA' : 'playerB';
+    if(isDoublesCategory(m.category)){
+      const parts = (m[key] || "").split(" & ");
+      while(parts.length < 2) parts.push("");
+      parts[slotIdx] = value;
+      m[key] = parts.every(p=>!p) ? "" : parts.join(" & ");
+    } else {
+      m[key] = value;
+    }
+    saveState();
+    renderRound1();
+  };
+
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && currentMatchId !== null) window.__closeMatch();
+  });
 
   // ---------- STANDINGS COMPUTATION ----------
   function computeStandings(){
@@ -608,17 +747,13 @@
     m.winner = (m.winner === val) ? null : val;
     saveState();
     updateAll();
+    if(currentMatchId === id) renderMatchModal(m);
   };
   window.__setScore = function(id, val){
     const m = findMatch(id);
     m.score = val;
     saveState();
-  };
-  window.__setPlayer = function(id, side, el){
-    const m = findMatch(id);
-    const val = el.textContent.trim();
-    if(side==='A') m.playerA = val; else m.playerB = val;
-    saveState();
+    renderRound1();
   };
   window.__resetTournament = function(){
     if(confirm("Clear all saved team names, players and results? This can't be undone.")){
