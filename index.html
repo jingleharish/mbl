@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian Badminton Championship</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --court-deep:#0B4F4A;
+    --court-mid:#146B63;
+    --court-light:#1F8377;
+    --line:#F7F5EF;
+    --amber:#C97B3D;
+    --amber-light:#E4A86A;
+    --red:#D64545;
+    --gold:#D9A441;
+    --ink:#12302C;
+    --ink-soft:#4B6863;
+    --card:#FFFFFF;
+    --card-alt:#F3F1EA;
+    --shadow: 0 12px 30px -12px rgba(11,79,74,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--court-deep);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  .bg-court{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 78px, rgba(247,245,239,0.05) 78px 79px),
+      repeating-linear-gradient(90deg, transparent 0 78px, rgba(247,245,239,0.05) 78px 79px);
+  }
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:36px 20px 80px;}
+  h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.01em; margin:0;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--amber-light); font-weight:500;
+  }
+  a{color:inherit;}
+
+  /* ---------- HERO ---------- */
+  .hero{ padding:10px 0 28px; border-bottom:1px solid rgba(247,245,239,0.15); margin-bottom:28px;}
+  .hero h1{ color:var(--line); font-size:clamp(34px,5.2vw,58px); line-height:1.02; margin-top:10px; max-width:820px;}
+  .hero p.sub{ color:rgba(247,245,239,0.75); font-size:17px; max-width:640px; margin-top:14px; line-height:1.5;}
+  .stat-strip{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:rgba(247,245,239,0.15);
+    border:1px solid rgba(247,245,239,0.15); border-radius:10px; overflow:hidden; margin-top:26px;
+  }
+  .stat{ background:rgba(11,79,74,0.55); padding:16px 14px; text-align:left;}
+  .stat .n{ font-family:'JetBrains Mono',monospace; font-size:26px; color:var(--amber-light); font-weight:700;}
+  .stat .l{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(247,245,239,0.65); margin-top:4px;}
+
+  /* ---------- CARD SECTIONS ---------- */
+  .card{
+    background:var(--card); border-radius:16px; padding:30px 32px; margin-bottom:26px; box-shadow:var(--shadow);
+  }
+  .card h2{ font-size:30px; color:var(--court-deep);}
+  .card .eyebrow{ color:var(--amber); }
+  .card-head{ margin-bottom:20px; }
+  .card-head p{ color:var(--ink-soft); font-size:15px; line-height:1.55; margin-top:8px; max-width:760px;}
+
+  /* ---------- FORMAT ---------- */
+  .format-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:18px;}
+  .fbox{ background:var(--card-alt); border-radius:12px; padding:18px 18px 20px; border-left:3px solid var(--amber);}
+  .fbox h4{ font-size:19px; color:var(--court-deep); margin-bottom:6px;}
+  .fbox p{ font-size:13.5px; color:var(--ink-soft); line-height:1.5; margin:0;}
+  .cat-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
+  .cat-pill{
+    font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--court-deep); color:var(--line);
+    padding:6px 12px; border-radius:100px; letter-spacing:0.03em;
+  }
+  .note{
+    font-size:13px; color:var(--ink-soft); background:var(--card-alt); border-radius:10px; padding:12px 16px;
+    margin-top:16px; border-left:3px solid var(--court-mid);
+  }
+  .note b{color:var(--ink);}
+
+  /* ---------- TEAMS ---------- */
+  .team-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:18px;}
+  .team-card{ background:var(--card-alt); border-radius:12px; padding:18px; border-top:4px solid var(--court-mid);}
+  .team-card[data-idx="0"]{border-top-color:#146B63;}
+  .team-card[data-idx="1"]{border-top-color:#C97B3D;}
+  .team-card[data-idx="2"]{border-top-color:#8A5FB0;}
+  .team-card[data-idx="3"]{border-top-color:#D64545;}
+  .team-name{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px; color:var(--court-deep);
+    outline:none; border-bottom:1px dashed transparent; padding-bottom:2px;
+  }
+  .team-name:hover, .team-name:focus{ border-bottom-color:var(--amber); }
+  .roster{ list-style:none; margin:12px 0 0; padding:0; font-size:12.5px; color:var(--ink-soft);}
+  .roster li{ display:flex; align-items:center; gap:6px; padding:3px 0; border-bottom:1px dotted rgba(18,48,44,0.1);}
+  .roster li span.no{ font-family:'JetBrains Mono',monospace; color:var(--amber); width:16px; flex:none;}
+  .roster [contenteditable]{ outline:none; flex:1; }
+  .roster [contenteditable]:focus{ background:#fff; border-radius:3px; }
+  .roster-hint{font-size:11px; color:var(--ink-soft); margin-top:10px; opacity:0.75;}
+
+  /* ---------- SCHEDULE ---------- */
+  .slot-block{ margin-top:26px; }
+  .slot-title{
+    display:flex; align-items:baseline; gap:10px; margin-bottom:12px;
+  }
+  .slot-title h3{ font-size:20px; color:var(--court-deep);}
+  .slot-time{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-soft); background:var(--card-alt);
+    padding:4px 10px; border-radius:100px; outline:none; cursor:text;
+  }
+  .slot-time:focus{ background:#fff; box-shadow:0 0 0 2px var(--amber);}
+  .court-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+  .match-card{
+    border:1px solid rgba(18,48,44,0.1); border-radius:12px; padding:14px 16px; background:#fff;
+    transition:box-shadow .15s ease;
+  }
+  .match-card.decided{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .match-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .court-badge{ display:flex; align-items:center; gap:8px; }
+  .court-icon{ width:26px; height:16px; border-radius:2px; background:var(--court-mid); position:relative; flex:none;}
+  .court-icon::after{ content:""; position:absolute; left:50%; top:2px; bottom:2px; width:1px; background:rgba(247,245,239,0.7); }
+  .court-label{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink); font-weight:700;}
+  .cat-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--amber); font-weight:600;}
+  .pending-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); font-style:italic;}
+  .versus{ display:flex; align-items:center; gap:10px; margin:8px 0 12px;}
+  .versus .side{ flex:1; font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
+  .versus .vs{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card-alt); padding:3px 7px; border-radius:6px;}
+  .win-row{ display:flex; gap:8px; margin-bottom:8px;}
+  .win-btn{
+    flex:1; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 6px; border-radius:8px;
+    border:1px solid rgba(18,48,44,0.18); background:#fff; color:var(--ink); cursor:pointer; text-align:center;
+    transition:all .12s ease;
+  }
+  .win-btn:hover{ border-color:var(--amber); }
+  .win-btn.active{ background:var(--court-deep); color:var(--line); border-color:var(--court-deep); }
+  .win-btn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+  .clear-btn{
+    font-size:11px; color:var(--ink-soft); background:none; border:none; text-decoration:underline; cursor:pointer;
+    padding:0; margin-bottom:8px; display:inline-block;
+  }
+  .score-input{
+    width:100%; font-family:'JetBrains Mono',monospace; font-size:12px; padding:7px 9px; border-radius:7px;
+    border:1px solid rgba(18,48,44,0.15); color:var(--ink-soft); background:var(--card-alt);
+  }
+  .score-input:focus{ outline:2px solid var(--amber); background:#fff;}
+  .score-input::placeholder{ color:rgba(18,48,44,0.35);}
+
+  /* ---------- TIE PROGRESS (rounds 2/3) ---------- */
+  .tie-list{ margin-top:22px; }
+  .tie-block{ border:1px solid rgba(18,48,44,0.1); border-radius:12px; padding:16px 18px; margin-bottom:14px;}
+  .tie-block-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:6px;}
+  .tie-block-head h4{ font-size:19px; color:var(--court-deep);}
+  .tie-score{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--amber); font-weight:700;}
+  .cat-matches{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px;}
+  .cat-match{ background:var(--card-alt); border-radius:10px; padding:10px 12px;}
+  .cat-match .cat-tag{ display:block; margin-bottom:6px;}
+
+  /* ---------- STANDINGS ---------- */
+  .status-banner{
+    border-radius:12px; padding:20px 24px; margin-bottom:22px; display:flex; align-items:center; gap:18px;
+    background:linear-gradient(120deg, var(--court-deep), var(--court-mid));
+  }
+  .status-banner.champion{ background:linear-gradient(120deg,#8A5C1E,var(--gold)); }
+  .trophy{ flex:none; }
+  .status-banner .txt .eyebrow{ color:rgba(247,245,239,0.75); }
+  .status-banner .txt h3{ color:var(--line); font-size:26px; margin-top:4px;}
+  .status-banner .txt p{ color:rgba(247,245,239,0.85); font-size:13.5px; margin:4px 0 0;}
+
+  table{ width:100%; border-collapse:collapse; margin-top:6px;}
+  th,td{ text-align:left; padding:11px 10px; font-size:13.5px; border-bottom:1px solid rgba(18,48,44,0.08);}
+  th{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:500;}
+  td.num, th.num{ text-align:center; font-family:'JetBrains Mono',monospace; }
+  tr.rank-1 td{ background:rgba(217,164,65,0.12); font-weight:700; }
+  .medal{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber); margin-right:6px;}
+  .sub-table-title{ margin-top:30px; font-size:19px; color:var(--court-deep);}
+  .sub-table-note{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; margin-bottom:6px;}
+
+  footer{ color:rgba(247,245,239,0.55); font-size:12.5px; text-align:center; padding-top:10px; line-height:1.6;}
+  footer b{ color:rgba(247,245,239,0.8);}
+
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:6px -4px 0; padding:0 4px; }
+  .table-scroll table{ min-width:560px; }
+
+  @media(max-width:860px){
+    .format-grid, .team-grid, .court-grid{ grid-template-columns:1fr; }
+    .stat-strip{ grid-template-columns:repeat(2,1fr); }
+    .wrap{ padding:24px 14px 60px; }
+    .card{ padding:22px 18px; }
+  }
+  @media(max-width:600px){
+    .hero{ padding:6px 0 20px; }
+    .hero .sub{ font-size:15.5px; }
+    .card h2{ font-size:25px; }
+    .card{ padding:18px 14px; border-radius:13px; margin-bottom:18px; }
+    .fbox{ padding:14px 14px 16px; }
+    .team-grid{ gap:12px; }
+    .court-grid{ gap:12px; }
+    .match-card{ padding:14px; }
+    .versus .side{ font-size:17px; }
+    .win-btn{ padding:11px 6px; font-size:13px; min-height:42px; }
+    .slot-title{ flex-wrap:wrap; row-gap:6px; }
+    .status-banner{ flex-wrap:wrap; padding:16px 18px; }
+    .status-banner .txt h3{ font-size:22px; }
+    /* Inputs & contenteditable fields at 16px+ prevents iOS Safari auto-zoom on focus */
+    .score-input, .team-name, .roster [contenteditable], .slot-time{ font-size:16px; }
+    .roster{ font-size:14px; }
+    th, td{ padding:9px 8px; font-size:12.5px; white-space:nowrap; }
+  }
+  @media print{
+    body{ background:#fff; }
+    .bg-court{ display:none; }
+    .card{ box-shadow:none; border:1px solid #ddd; }
+    .win-btn, .clear-btn{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-court"></div>
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="eyebrow">Round Robin · 4 Teams · 5 Categories</div>
+    <h1>Meridian Badminton Championship</h1>
+    <p class="sub">Every team faces every other team once — a "tie" — across five category matches. Win three of the five categories and you win the tie. Most tie-wins after all six ties takes the trophy.</p>
+    <div class="stat-strip">
+      <div class="stat"><div class="n">04</div><div class="l">Teams</div></div>
+      <div class="stat"><div class="n">06</div><div class="l">Ties</div></div>
+      <div class="stat"><div class="n">30</div><div class="l">Total matches</div></div>
+      <div class="stat"><div class="n">04</div><div class="l">Courts booked</div></div>
+    </div>
+  </header>
+
+  <!-- LIVE STATUS BANNER -->
+  <div id="status-banner"></div>
+
+  <!-- FORMAT -->
+  <section class="card">
+    <div class="card-head">
+      <div class="eyebrow">How it works</div>
+      <h2>Format & scoring</h2>
+      <p>Assumptions used below — edit anything on this page directly (team names, players, court times) to match your event.</p>
+    </div>
+    <div class="format-grid">
+      <div class="fbox">
+        <h4>The Tie</h4>
+        <p>Each of the 6 team-vs-team ties is contested across all 5 categories. First team to 3 category wins takes the tie. Remaining categories can still be played for the record, but the tie is already decided.</p>
+      </div>
+      <div class="fbox">
+        <h4>Each Match</h4>
+        <p>Single set decides the match — no best-of-3. Rally-point scoring: <b>Singles (MS/WS) to 11 points</b>, <b>Doubles (MD/WD/XD) to 15 points</b>.</p>
+      </div>
+      <div class="fbox">
+        <h4>League Table</h4>
+        <p>2 points for a tie win, 0 for a loss. Ranked by points → head-to-head result → total category-match wins.</p>
+      </div>
+    </div>
+    <div class="cat-row">
+      <span class="cat-pill">MS · Men's Singles</span>
+      <span class="cat-pill">MD · Men's Doubles</span>
+      <span class="cat-pill">WS · Women's Singles</span>
+      <span class="cat-pill">WD · Women's Doubles</span>
+      <span class="cat-pill">XD · Mixed Doubles</span>
+    </div>
+    <div class="note"><b>Squad note:</b> each tie needs 8 player-slots (1 MS + 2 MD + 1 WS + 2 WD + 2 XD, one man one woman). With a 12-player squad, aim for roughly an even men/women split so you can rotate across ties without over-playing anyone.</div>
+  </section>
+
+  <!-- TEAMS -->
+  <section class="card">
+    <div class="card-head">
+      <div class="eyebrow">Squads</div>
+      <h2>Teams</h2>
+      <p>Click any name to rename a team or edit a player. Mark player gender in brackets if useful for planning MS/WS/mixed pairings.</p>
+    </div>
+    <div class="team-grid" id="team-grid"></div>
+  </section>
+
+  <!-- FULL SCHEDULE -->
+  <section class="card">
+    <div class="card-head">
+      <div class="eyebrow">Today's session · 5:00 – 7:00 PM</div>
+      <h2>Full Championship — Court Schedule</h2>
+      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking. MS/MD/WS/WD run six 15-minute slots across all 4 courts (5:00–6:30). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap the winning team on each card to record a result — the league table below updates instantly, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
+    </div>
+    <div id="round1-schedule"></div>
+  </section>
+
+  <!-- STANDINGS -->
+  <section class="card">
+    <div class="card-head">
+      <div class="eyebrow">Live table</div>
+      <h2>Standings, Winner & Runner-up</h2>
+      <p>Updates automatically as match results are recorded above.</p>
+    </div>
+    <div class="table-scroll">
+      <table id="standings-table">
+        <thead>
+          <tr><th>Rank</th><th>Team</th><th class="num">Ties Played</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Category Wins</th><th class="num">Points</th></tr>
+        </thead>
+        <tbody id="standings-body"></tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-table-title">Tie-by-tie progress</h3>
+    <p class="sub-table-note">Each tie is decided at 3 category wins (best of 5). "In progress" ties still need more category matches played.</p>
+    <div id="tie-progress"></div>
+  </section>
+
+  <footer>
+    <p><b>Editable document</b> — team names, players, slot times and every score box on this page can be edited directly in the browser.<br>
+    Names and results are saved automatically to this browser (via localStorage) — reloading the page won't lose them. This is per-browser/device only, not shared across devices.<br>
+    <button onclick="window.__resetTournament()" style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
+  const PAIRS = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]; // 6 ties
+  const CATS = ["MS","MD","WS","WD","XD"];
+  const CAT_LABEL = {MS:"Men's Singles", MD:"Men's Doubles", WS:"Women's Singles", WD:"Women's Doubles", XD:"Mixed Doubles"};
+  const ROUND_OF = {MS:1, MD:1, WS:1, WD:1, XD:1};
+  const STORAGE_KEY = "badmintonChampionship_v1";
+
+  function esc(s){
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+
+  function saveState(){
+    try{
+      const teams = [0,1,2,3].map(i=>getTeamName(i));
+      const players = [0,1,2,3].map(i=>{
+        const card = document.querySelector('.team-card[data-idx="'+i+'"]');
+        if(!card) return [];
+        return Array.from(card.querySelectorAll(".roster li span[contenteditable]")).map(s=>s.textContent.trim());
+      });
+      const matchData = {};
+      matches.forEach(m => { matchData[m.id] = {winner:m.winner, score:m.score}; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({teams, players, matches:matchData}));
+    }catch(e){ console.warn("Could not save to localStorage:", e); }
+  }
+
+  const SAVED = loadState();
+
+  // Round-1 court/slot assignment: each round-robin pairing (2 ties, all 4 teams) gets two
+  // 15-min slots back to back — one for MS+MD, one for WS+WD — on the same courts throughout.
+  const R1_SCHEDULE = [
+    // Pairing 1: Tie1 (T1vT2) on courts 1-2, Tie6 (T3vT4) on courts 3-4
+    {tie:0, category:"MS", slot:1, court:1}, {tie:0, category:"MD", slot:1, court:2},
+    {tie:5, category:"MS", slot:1, court:3}, {tie:5, category:"MD", slot:1, court:4},
+    {tie:0, category:"WS", slot:2, court:1}, {tie:0, category:"WD", slot:2, court:2},
+    {tie:5, category:"WS", slot:2, court:3}, {tie:5, category:"WD", slot:2, court:4},
+    // Pairing 2: Tie2 (T1vT3) on courts 1-2, Tie5 (T2vT4) on courts 3-4
+    {tie:1, category:"MS", slot:3, court:1}, {tie:1, category:"MD", slot:3, court:2},
+    {tie:4, category:"MS", slot:3, court:3}, {tie:4, category:"MD", slot:3, court:4},
+    {tie:1, category:"WS", slot:4, court:1}, {tie:1, category:"WD", slot:4, court:2},
+    {tie:4, category:"WS", slot:4, court:3}, {tie:4, category:"WD", slot:4, court:4},
+    // Pairing 3: Tie3 (T1vT4) on courts 1-2, Tie4 (T2vT3) on courts 3-4
+    {tie:2, category:"MS", slot:5, court:1}, {tie:2, category:"MD", slot:5, court:2},
+    {tie:3, category:"MS", slot:5, court:3}, {tie:3, category:"MD", slot:5, court:4},
+    {tie:2, category:"WS", slot:6, court:1}, {tie:2, category:"WD", slot:6, court:2},
+    {tie:3, category:"WS", slot:6, court:3}, {tie:3, category:"WD", slot:6, court:4},
+    // Mixed Doubles: only 4 teams exist, so at most 2 ties can run at once without a team
+    // playing twice simultaneously — same 3 pairings, one match per court, courts 3-4 free.
+    {tie:0, category:"XD", slot:7, court:1}, {tie:5, category:"XD", slot:7, court:2},
+    {tie:1, category:"XD", slot:8, court:1}, {tie:4, category:"XD", slot:8, court:2},
+    {tie:2, category:"XD", slot:9, court:1}, {tie:3, category:"XD", slot:9, court:2},
+  ];
+  const SLOT_TIMES = {
+    1:"5:00 – 5:15 PM", 2:"5:15 – 5:30 PM", 3:"5:30 – 5:45 PM",
+    4:"5:45 – 6:00 PM", 5:"6:00 – 6:15 PM", 6:"6:15 – 6:30 PM",
+    7:"6:30 – 6:40 PM", 8:"6:40 – 6:50 PM", 9:"6:50 – 7:00 PM"
+  };
+
+  // Build full 30-match list
+  const matches = [];
+  PAIRS.forEach((pair, tieIdx) => {
+    CATS.forEach(cat => {
+      const sched = R1_SCHEDULE.find(s => s.tie===tieIdx && s.category===cat);
+      matches.push({
+        id: "t"+tieIdx+"-"+cat,
+        tie: tieIdx, category: cat, round: ROUND_OF[cat],
+        court: sched ? sched.court : null,
+        slot: sched ? sched.slot : null,
+        winner: null, score: ""
+      });
+    });
+  });
+  if(SAVED && SAVED.matches){
+    matches.forEach(m => {
+      const sm = SAVED.matches[m.id];
+      if(sm){ m.winner = (sm.winner===0||sm.winner===1) ? sm.winner : null; m.score = sm.score || ""; }
+    });
+  }
+
+  function getTeamName(idx){
+    const el = document.getElementById("team-name-"+idx);
+    return el ? el.textContent.trim() || TEAM_DEFAULTS[idx] : TEAM_DEFAULTS[idx];
+  }
+  function getTeamNameSafe(idx){ return esc(getTeamName(idx)); }
+
+  function findMatch(id){ return matches.find(m=>m.id===id); }
+
+  function scorePlaceholder(category){
+    return (category==="MS" || category==="WS") ? "Score e.g. 11-7" : "Score e.g. 15-12";
+  }
+
+  // ---------- RENDER: TEAMS ----------
+  function renderTeams(){
+    const grid = document.getElementById("team-grid");
+    grid.innerHTML = TEAM_DEFAULTS.map((defaultName, i) => {
+      const teamName = (SAVED && SAVED.teams && SAVED.teams[i]) ? SAVED.teams[i] : defaultName;
+      const savedPlayers = (SAVED && SAVED.players && SAVED.players[i]) ? SAVED.players[i] : [];
+      return `
+      <div class="team-card" data-idx="${i}">
+        <div class="team-name" id="team-name-${i}" contenteditable="true" oninput="window.__updateAll()">${esc(teamName)}</div>
+        <ul class="roster">
+          ${Array.from({length:12}, (_,p)=>{
+            const pname = savedPlayers[p] || ("Player "+(p+1));
+            return `<li><span class="no">${p+1}</span><span contenteditable="true" oninput="window.__savePlayers()">${esc(pname)}</span></li>`;
+          }).join("")}
+        </ul>
+        <div class="roster-hint">Tap any player name to edit</div>
+      </div>
+    `;
+    }).join("");
+  }
+
+  // ---------- RENDER: ROUND 1 SCHEDULE ----------
+  function matchCardHTML(m){
+    const pair = PAIRS[m.tie];
+    const nameA = getTeamNameSafe(pair[0]);
+    const nameB = getTeamNameSafe(pair[1]);
+    const decided = m.winner !== null;
+    return `
+      <div class="match-card ${decided?'decided':''}">
+        <div class="match-top">
+          <div class="court-badge">
+            <div class="court-icon"></div>
+            <span class="court-label">Court ${m.court}</span>
+          </div>
+          <span class="cat-tag">${CAT_LABEL[m.category]}</span>
+        </div>
+        <div class="versus">
+          <div class="side">${nameA}</div>
+          <div class="vs">TIE ${m.tie+1}</div>
+          <div class="side" style="text-align:right">${nameB}</div>
+        </div>
+        <div class="win-row">
+          <button class="win-btn ${m.winner===0?'active':''}" onclick="window.__setWinner('${m.id}',0)">${nameA} won</button>
+          <button class="win-btn ${m.winner===1?'active':''}" onclick="window.__setWinner('${m.id}',1)">${nameB} won</button>
+        </div>
+        ${decided ? `<button class="clear-btn" onclick="window.__setWinner('${m.id}',null)">Clear result</button>` : ""}
+        <input class="score-input" placeholder="${scorePlaceholder(m.category)}" value="${m.score}" oninput="window.__setScore('${m.id}', this.value)">
+      </div>
+    `;
+  }
+
+  function renderRound1(){
+    const container = document.getElementById("round1-schedule");
+    let html = "";
+    [1,2,3,4,5,6,7,8,9].forEach(slotNum => {
+      const slotMatches = R1_SCHEDULE.filter(s=>s.slot===slotNum).map(s=>findMatch("t"+s.tie+"-"+s.category));
+      const isXdSlot = slotNum >= 7;
+      html += `
+        <div class="slot-block">
+          <div class="slot-title">
+            <h3>Slot ${slotNum}</h3>
+            <span class="slot-time" contenteditable="true">${SLOT_TIMES[slotNum]}</span>
+            ${isXdSlot ? `<span class="pending-tag">Mixed Doubles · Courts 3 &amp; 4 free</span>` : ""}
+          </div>
+          <div class="court-grid">
+            ${slotMatches.map(matchCardHTML).join("")}
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  // ---------- STANDINGS COMPUTATION ----------
+  function computeStandings(){
+    const stats = TEAM_DEFAULTS.map(()=>({points:0, tiesWon:0, tiesLost:0, tiesPlayed:0, catWins:0}));
+    const tieResults = [];
+    PAIRS.forEach((pair, tieIdx) => {
+      let aWins=0, bWins=0;
+      CATS.forEach(cat => {
+        const m = findMatch("t"+tieIdx+"-"+cat);
+        if(m.winner===0) aWins++;
+        else if(m.winner===1) bWins++;
+      });
+      stats[pair[0]].catWins += aWins;
+      stats[pair[1]].catWins += bWins;
+      const decided = aWins>=3 || bWins>=3;
+      const winnerIdx = aWins>=3 ? pair[0] : (bWins>=3 ? pair[1] : null);
+      if(decided){
+        stats[pair[0]].tiesPlayed++; stats[pair[1]].tiesPlayed++;
+        if(winnerIdx===pair[0]){ stats[pair[0]].tiesWon++; stats[pair[1]].tiesLost++; stats[pair[0]].points+=2; }
+        else { stats[pair[1]].tiesWon++; stats[pair[0]].tiesLost++; stats[pair[1]].points+=2; }
+      }
+      tieResults.push({tieIdx, pair, aWins, bWins, decided, winnerIdx});
+    });
+
+    const order = [0,1,2,3].sort((a,b)=>{
+      if(stats[a].points !== stats[b].points) return stats[b].points - stats[a].points;
+      const tIdx = PAIRS.findIndex(p => (p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a));
+      if(tIdx>-1 && tieResults[tIdx].decided){
+        if(tieResults[tIdx].winnerIdx===a) return -1;
+        if(tieResults[tIdx].winnerIdx===b) return 1;
+      }
+      return stats[b].catWins - stats[a].catWins;
+    });
+
+    return {stats, tieResults, order};
+  }
+
+  // ---------- RENDER: STANDINGS + BANNER ----------
+  function renderStandings(){
+    const {stats, tieResults, order} = computeStandings();
+    const body = document.getElementById("standings-body");
+    body.innerHTML = order.map((idx, rank) => `
+      <tr class="${rank===0?'rank-1':''}">
+        <td>${rank+1}</td>
+        <td>${rank===0?'<span class="medal">1st</span>':''}${rank===1?'<span class="medal">2nd</span>':''}${getTeamNameSafe(idx)}</td>
+        <td class="num">${stats[idx].tiesPlayed}</td>
+        <td class="num">${stats[idx].tiesWon}</td>
+        <td class="num">${stats[idx].tiesLost}</td>
+        <td class="num">${stats[idx].catWins}</td>
+        <td class="num">${stats[idx].points}</td>
+      </tr>
+    `).join("");
+
+    const allDecided = tieResults.every(t=>t.decided);
+    const banner = document.getElementById("status-banner");
+    const leaderIdx = order[0];
+    const runnerIdx = order[1];
+    if(allDecided){
+      banner.innerHTML = `
+        <div class="status-banner champion">
+          ${trophySVG()}
+          <div class="txt">
+            <div class="eyebrow">Championship complete</div>
+            <h3>🏆 ${getTeamNameSafe(leaderIdx)} are champions</h3>
+            <p>Runner-up: ${getTeamNameSafe(runnerIdx)} · Final standings below</p>
+          </div>
+        </div>`;
+    } else {
+      const decidedCount = tieResults.filter(t=>t.decided).length;
+      banner.innerHTML = `
+        <div class="status-banner">
+          ${trophySVG()}
+          <div class="txt">
+            <div class="eyebrow">In progress · ${decidedCount} of 6 ties decided</div>
+            <h3>Current leader: ${getTeamNameSafe(leaderIdx)}</h3>
+            <p>Record results above as matches are played — all 30 matches are scheduled for today, so this could resolve by 7:00 PM</p>
+          </div>
+        </div>`;
+    }
+
+    // Tie-by-tie progress cards
+    const tp = document.getElementById("tie-progress");
+    tp.innerHTML = tieResults.map(t => {
+      const nameA = getTeamNameSafe(t.pair[0]);
+      const nameB = getTeamNameSafe(t.pair[1]);
+      const status = t.decided ? `${getTeamNameSafe(t.winnerIdx)} win the tie` : "In progress";
+      return `
+        <div class="tie-block">
+          <div class="tie-block-head">
+            <h4>Tie ${t.tieIdx+1}: ${nameA} vs ${nameB}</h4>
+            <span class="tie-score">${t.aWins} – ${t.bWins} · ${status}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function trophySVG(){
+    return `<svg class="trophy" width="46" height="46" viewBox="0 0 46 46" fill="none">
+      <path d="M14 8H32V17C32 23 27.5 27 23 27C18.5 27 14 23 14 17V8Z" stroke="#F7F5EF" stroke-width="2"/>
+      <path d="M14 10H8V14C8 18 11 20 14 20" stroke="#F7F5EF" stroke-width="2"/>
+      <path d="M32 10H38V14C38 18 35 20 32 20" stroke="#F7F5EF" stroke-width="2"/>
+      <rect x="20" y="27" width="6" height="7" fill="#F7F5EF"/>
+      <path d="M13 38H33L30 34H16L13 38Z" fill="#F7F5EF"/>
+    </svg>`;
+  }
+
+  // ---------- EVENT HANDLERS (exposed globally for inline onclick/oninput) ----------
+  window.__setWinner = function(id, val){
+    const m = findMatch(id);
+    m.winner = (m.winner === val) ? null : val;
+    saveState();
+    updateAll();
+  };
+  window.__setScore = function(id, val){
+    const m = findMatch(id);
+    m.score = val;
+    saveState();
+  };
+  window.__updateAll = function(){ saveState(); updateAll(); };
+  window.__savePlayers = function(){ saveState(); };
+  window.__resetTournament = function(){
+    if(confirm("Clear all saved team names, players and results? This can't be undone.")){
+      try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+      location.reload();
+    }
+  };
+
+  function updateAll(){
+    renderRound1();
+    renderStandings();
+  }
+
+  renderTeams();
+  updateAll();
+})();
+</script>
+</body>
+</html>
