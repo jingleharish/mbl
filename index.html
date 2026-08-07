@@ -46,6 +46,16 @@
   }
   a{color:inherit;}
 
+  /* ---------- NAV ---------- */
+  .site-nav{ display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
+  .site-nav a{
+    font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    color:rgba(247,245,239,0.75); text-decoration:none; padding:8px 16px; border-radius:100px;
+    border:1px solid rgba(247,245,239,0.25); transition:all .15s ease;
+  }
+  .site-nav a:hover{ border-color:var(--amber-light); color:var(--line); }
+  .site-nav a.active{ background:var(--amber); border-color:var(--amber); color:var(--ink); }
+
   /* ---------- HERO ---------- */
   .hero{ padding:10px 0 28px; border-bottom:1px solid rgba(247,245,239,0.15); margin-bottom:28px;}
   .hero h1{ color:var(--line); font-size:clamp(34px,5.2vw,58px); line-height:1.02; margin-top:10px; max-width:820px;}
@@ -126,9 +136,17 @@
   .court-label{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink); font-weight:700;}
   .cat-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--amber); font-weight:600;}
   .pending-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); font-style:italic;}
-  .versus{ display:flex; align-items:center; gap:10px; margin:8px 0 12px;}
-  .versus .side{ flex:1; font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
-  .versus .vs{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card-alt); padding:3px 7px; border-radius:6px;}
+  .versus{ display:flex; align-items:flex-start; gap:10px; margin:8px 0 12px;}
+  .versus .side{ flex:1; }
+  .versus .side-name{ font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
+  .versus .player-line{
+    font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-soft); margin-top:3px;
+    outline:none; min-height:14px; border-bottom:1px dashed transparent;
+  }
+  .versus .player-line:hover, .versus .player-line:focus{ border-bottom-color:var(--amber); }
+  .versus .player-line:focus{ background:#fff; }
+  .versus .player-line:empty:before{ content:attr(data-placeholder); color:rgba(18,48,44,0.35); }
+  .versus .vs{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card-alt); padding:3px 7px; border-radius:6px; align-self:center;}
   .win-row{ display:flex; gap:8px; margin-bottom:8px;}
   .win-btn{
     flex:1; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 6px; border-radius:8px;
@@ -200,13 +218,13 @@
     .team-grid{ gap:12px; }
     .court-grid{ gap:12px; }
     .match-card{ padding:14px; }
-    .versus .side{ font-size:17px; }
+    .versus .side-name{ font-size:17px; }
     .win-btn{ padding:11px 6px; font-size:13px; min-height:42px; }
     .slot-title{ flex-wrap:wrap; row-gap:6px; }
     .status-banner{ flex-wrap:wrap; padding:16px 18px; }
     .status-banner .txt h3{ font-size:22px; }
     /* Inputs & contenteditable fields at 16px+ prevents iOS Safari auto-zoom on focus */
-    .score-input, .team-name, .roster [contenteditable], .slot-time{ font-size:16px; }
+    .score-input, .team-name, .roster [contenteditable], .slot-time, .player-line{ font-size:16px; }
     .roster{ font-size:14px; }
     th, td{ padding:9px 8px; font-size:12.5px; white-space:nowrap; }
   }
@@ -221,6 +239,12 @@
 <body>
 <div class="bg-court"></div>
 <div class="wrap">
+
+  <!-- NAV -->
+  <nav class="site-nav">
+    <a href="#" class="active">Schedule &amp; Standings</a>
+    <a href="teams/">Teams &amp; Squads</a>
+  </nav>
 
   <!-- HERO -->
   <header class="hero">
@@ -243,7 +267,7 @@
     <div class="card-head">
       <div class="eyebrow">How it works</div>
       <h2>Format & scoring</h2>
-      <p>Assumptions used below — edit anything on this page directly (team names, players, court times) to match your event.</p>
+      <p>Assumptions used below — edit anything on this page directly (court times, results, players per match) to match your event. Team names & rosters live on the <a href="teams/" style="text-decoration:underline;">Teams & Squads</a> page.</p>
     </div>
     <div class="format-grid">
       <div class="fbox">
@@ -267,16 +291,6 @@
       <span class="cat-pill">XD · Mixed Doubles</span>
     </div>
     <div class="note"><b>Squad note:</b> each tie needs 8 player-slots (1 MS + 2 MD + 1 WS + 2 WD + 2 XD, one man one woman). With a 12-player squad, aim for roughly an even men/women split so you can rotate across ties without over-playing anyone.</div>
-  </section>
-
-  <!-- TEAMS -->
-  <section class="card">
-    <div class="card-head">
-      <div class="eyebrow">Squads</div>
-      <h2>Teams</h2>
-      <p>Click any name to rename a team or edit a player. Mark player gender in brackets if useful for planning MS/WS/mixed pairings.</p>
-    </div>
-    <div class="team-grid" id="team-grid"></div>
   </section>
 
   <!-- FULL SCHEDULE -->
@@ -311,8 +325,8 @@
   </section>
 
   <footer>
-    <p><b>Editable document</b> — team names, players, slot times and every score box on this page can be edited directly in the browser.<br>
-    Names and results are saved automatically to this browser (via localStorage) — reloading the page won't lose them. This is per-browser/device only, not shared across devices.<br>
+    <p><b>Editable document</b> — slot times, match players and every score box on this page can be edited directly in the browser.<br>
+    Results are saved automatically to this browser (via localStorage) — reloading the page won't lose them. This is per-browser/device only, not shared across devices.<br>
     <button onclick="window.__resetTournament()" style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
   </footer>
 </div>
@@ -341,15 +355,12 @@
 
   function saveState(){
     try{
-      const teams = [0,1,2,3].map(i=>getTeamName(i));
-      const players = [0,1,2,3].map(i=>{
-        const card = document.querySelector('.team-card[data-idx="'+i+'"]');
-        if(!card) return [];
-        return Array.from(card.querySelectorAll(".roster li span[contenteditable]")).map(s=>s.textContent.trim());
-      });
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const existing = raw ? JSON.parse(raw) : {};
       const matchData = {};
-      matches.forEach(m => { matchData[m.id] = {winner:m.winner, score:m.score}; });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({teams, players, matches:matchData}));
+      matches.forEach(m => { matchData[m.id] = {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB}; });
+      existing.matches = matchData;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
     }catch(e){ console.warn("Could not save to localStorage:", e); }
   }
 
@@ -395,20 +406,24 @@
         tie: tieIdx, category: cat, round: ROUND_OF[cat],
         court: sched ? sched.court : null,
         slot: sched ? sched.slot : null,
-        winner: null, score: ""
+        winner: null, score: "", playerA: "", playerB: ""
       });
     });
   });
   if(SAVED && SAVED.matches){
     matches.forEach(m => {
       const sm = SAVED.matches[m.id];
-      if(sm){ m.winner = (sm.winner===0||sm.winner===1) ? sm.winner : null; m.score = sm.score || ""; }
+      if(sm){
+        m.winner = (sm.winner===0||sm.winner===1) ? sm.winner : null;
+        m.score = sm.score || "";
+        m.playerA = sm.playerA || "";
+        m.playerB = sm.playerB || "";
+      }
     });
   }
 
   function getTeamName(idx){
-    const el = document.getElementById("team-name-"+idx);
-    return el ? el.textContent.trim() || TEAM_DEFAULTS[idx] : TEAM_DEFAULTS[idx];
+    return (SAVED && SAVED.teams && SAVED.teams[idx]) ? SAVED.teams[idx] : TEAM_DEFAULTS[idx];
   }
   function getTeamNameSafe(idx){ return esc(getTeamName(idx)); }
 
@@ -418,25 +433,8 @@
     return (category==="MS" || category==="WS") ? "Score e.g. 11-7" : "Score e.g. 15-12";
   }
 
-  // ---------- RENDER: TEAMS ----------
-  function renderTeams(){
-    const grid = document.getElementById("team-grid");
-    grid.innerHTML = TEAM_DEFAULTS.map((defaultName, i) => {
-      const teamName = (SAVED && SAVED.teams && SAVED.teams[i]) ? SAVED.teams[i] : defaultName;
-      const savedPlayers = (SAVED && SAVED.players && SAVED.players[i]) ? SAVED.players[i] : [];
-      return `
-      <div class="team-card" data-idx="${i}">
-        <div class="team-name" id="team-name-${i}" contenteditable="true" oninput="window.__updateAll()">${esc(teamName)}</div>
-        <ul class="roster">
-          ${Array.from({length:12}, (_,p)=>{
-            const pname = savedPlayers[p] || ("Player "+(p+1));
-            return `<li><span class="no">${p+1}</span><span contenteditable="true" oninput="window.__savePlayers()">${esc(pname)}</span></li>`;
-          }).join("")}
-        </ul>
-        <div class="roster-hint">Tap any player name to edit</div>
-      </div>
-    `;
-    }).join("");
+  function playerPlaceholder(category){
+    return (category==="MS" || category==="WS") ? "Player name" : "Player 1 & Player 2";
   }
 
   // ---------- RENDER: ROUND 1 SCHEDULE ----------
@@ -445,6 +443,7 @@
     const nameA = getTeamNameSafe(pair[0]);
     const nameB = getTeamNameSafe(pair[1]);
     const decided = m.winner !== null;
+    const placeholder = esc(playerPlaceholder(m.category));
     return `
       <div class="match-card ${decided?'decided':''}">
         <div class="match-top">
@@ -455,9 +454,15 @@
           <span class="cat-tag">${CAT_LABEL[m.category]}</span>
         </div>
         <div class="versus">
-          <div class="side">${nameA}</div>
+          <div class="side">
+            <div class="side-name">${nameA}</div>
+            <div class="player-line" contenteditable="true" data-placeholder="${placeholder}" oninput="window.__setPlayer('${m.id}','A', this)">${esc(m.playerA)}</div>
+          </div>
           <div class="vs">TIE ${m.tie+1}</div>
-          <div class="side" style="text-align:right">${nameB}</div>
+          <div class="side" style="text-align:right">
+            <div class="side-name">${nameB}</div>
+            <div class="player-line" contenteditable="true" data-placeholder="${placeholder}" oninput="window.__setPlayer('${m.id}','B', this)">${esc(m.playerB)}</div>
+          </div>
         </div>
         <div class="win-row">
           <button class="win-btn ${m.winner===0?'active':''}" onclick="window.__setWinner('${m.id}',0)">${nameA} won</button>
@@ -609,8 +614,12 @@
     m.score = val;
     saveState();
   };
-  window.__updateAll = function(){ saveState(); updateAll(); };
-  window.__savePlayers = function(){ saveState(); };
+  window.__setPlayer = function(id, side, el){
+    const m = findMatch(id);
+    const val = el.textContent.trim();
+    if(side==='A') m.playerA = val; else m.playerB = val;
+    saveState();
+  };
   window.__resetTournament = function(){
     if(confirm("Clear all saved team names, players and results? This can't be undone.")){
       try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
@@ -623,7 +632,6 @@
     renderStandings();
   }
 
-  renderTeams();
   updateAll();
 })();
 </script>
