@@ -676,16 +676,25 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   function playerSelectHTML(m, side, slotIdx, teamIdx){
     const roster = rosterFor(teamIdx);
     const reqGender = requiredGender(m.category, slotIdx);
-    // Players tagged with the required gender only; players with no gender set yet stay visible too
-    // (so rosters that haven't been tagged don't just vanish from the picker).
-    const filtered = reqGender ? roster.filter(p => !p.gender || p.gender===reqGender) : roster;
-    const list = filtered.length ? filtered : roster;
     const rawVal = side==='A' ? m.playerA : m.playerB;
     const parts = isDoublesCategory(m.category) ? (rawVal ? rawVal.split(" & ") : []) : [rawVal || ""];
     const selected = parts[slotIdx] || "";
+
+    // Strict filter: only players actually tagged with the required gender.
+    let list = reqGender ? roster.filter(p => p.gender === reqGender) : roster;
+    // ...but keep an already-made selection visible even if it doesn't match (e.g. picked
+    // before gender was tagged), so an existing pick never just disappears from the list.
+    if(selected && !list.some(p => p.name === selected)){
+      const existing = roster.find(p => p.name === selected);
+      list = existing ? [existing, ...list] : [{name: selected, gender: ""}, ...list];
+    }
+
     const placeholderLabel = reqGender==="M" ? "— Select men's player —" : reqGender==="F" ? "— Select women's player —" : "— Select player —";
     const opts = [`<option value="">${placeholderLabel}</option>`]
       .concat(list.map(p => `<option value="${esc(p.name)}" ${p.name===selected?'selected':''}>${esc(p.name)}${p.gender?` (${p.gender})`:''}</option>`));
+    if(list.length === 0){
+      return `<select class="player-select" onchange="window.__setPlayerSlot('${m.id}','${side}',${slotIdx},this.value)"><option value="">${reqGender==="M"?"No men tagged in roster yet":reqGender==="F"?"No women tagged in roster yet":"No players"}</option></select>`;
+    }
     return `<select class="player-select" onchange="window.__setPlayerSlot('${m.id}','${side}',${slotIdx},this.value)">${opts.join("")}</select>`;
   }
 
