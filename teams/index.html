@@ -285,7 +285,7 @@
   <footer>
     <p><b>Synced live</b> — team names and every player slot on this page sync instantly across every device via Firebase. A copy is also cached in this browser so the page still works if you briefly lose signal.<br>
     Editing requires the event PIN — tap the lock pill above to unlock this device.<br>
-    <button onclick="window.__resetTournament()" style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
+    <button id="reset-btn" onclick="window.__resetTournament()" style="display:none; margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
   </footer>
 </div>
 
@@ -378,13 +378,16 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   function updateLockBadge(){
     const btn = document.getElementById("lock-pill");
     if(!btn) return;
-    if(isUnlocked()){
+    const unlocked = isUnlocked();
+    if(unlocked){
       btn.lastChild.textContent = "Editing unlocked — tap to lock";
       btn.classList.add("unlocked");
     } else {
       btn.lastChild.textContent = "View only — tap to unlock editing";
       btn.classList.remove("unlocked");
     }
+    const resetBtn = document.getElementById("reset-btn");
+    if(resetBtn) resetBtn.style.display = unlocked ? "inline-block" : "none";
   }
   function setSyncStatus(state){
     const dot = document.getElementById("sync-dot");
