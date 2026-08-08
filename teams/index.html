@@ -129,6 +129,12 @@
     border:1px solid rgba(18,48,44,0.18); background:#fff; color:var(--ink-soft); flex:none; width:42px;
   }
   .gender-select:focus{ outline:2px solid var(--amber); }
+  .add-player-btn{
+    margin-top:10px; width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.03em;
+    color:var(--court-mid); background:none; border:1px dashed rgba(18,48,44,0.3); border-radius:8px;
+    padding:7px 10px; cursor:pointer; text-align:center; transition:all .12s ease;
+  }
+  .add-player-btn:hover{ border-color:var(--amber); color:var(--amber); background:var(--card-alt); }
 
   /* ---------- SCHEDULE ---------- */
   .slot-block{ margin-top:26px; }
@@ -317,6 +323,17 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     return {name: raw || "", gender: ""};
   }
 
+  // Firebase only returns a real JS array if every index 0..N is populated; a sparse
+  // roster (e.g. only slots 1 and 13 filled in) comes back as a plain object instead,
+  // where .length is undefined — so size must be derived from the highest numeric key.
+  function rosterSizeFromRemote(teamVal){
+    if(!teamVal) return BASE_ROSTER_SIZE;
+    if(Array.isArray(teamVal)) return Math.max(BASE_ROSTER_SIZE, teamVal.length);
+    const keys = Object.keys(teamVal).map(k=>parseInt(k,10)).filter(n=>!isNaN(n));
+    const maxIdx = keys.length ? Math.max(...keys) : -1;
+    return Math.max(BASE_ROSTER_SIZE, maxIdx+1);
+  }
+
   // ---------- LOCAL CACHE (instant paint + offline fallback) ----------
   function loadCache(){
     try{
@@ -380,14 +397,24 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     return !!(active && active.closest && active.closest("#team-grid"));
   }
 
+  const BASE_ROSTER_SIZE = 12;
+
   // ---------- LIVE STATE ----------
   let teamsState = TEAM_DEFAULTS.slice();
   let playersState = [[],[],[],[]];
+  let rosterSize = [BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, BASE_ROSTER_SIZE];
+
+  function growRosterSize(i, dataLength){
+    rosterSize[i] = Math.max(rosterSize[i] || BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, dataLength || 0);
+  }
 
   const CACHED = loadCache();
   if(CACHED){
     if(CACHED.teams) teamsState = TEAM_DEFAULTS.map((d,i)=> CACHED.teams[i] || d);
-    if(CACHED.players) playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
+    if(CACHED.players){
+      playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
+      [0,1,2,3].forEach(i => growRosterSize(i, playersState[i].length));
+    }
   }
 
   // ---------- RENDER: TEAMS ----------
@@ -396,11 +423,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     grid.innerHTML = TEAM_DEFAULTS.map((defaultName, i) => {
       const teamName = teamsState[i] || defaultName;
       const savedPlayers = playersState[i] || [];
+      const size = rosterSize[i] || BASE_ROSTER_SIZE;
       return `
       <div class="team-card" data-idx="${i}">
         <div class="team-name" id="team-name-${i}" contenteditable="true" oninput="window.__setTeamName(${i}, this)">${esc(teamName)}</div>
         <ul class="roster">
-          ${Array.from({length:12}, (_,p)=>{
+          ${Array.from({length:size}, (_,p)=>{
             const norm = normalizePlayer(savedPlayers[p]);
             const pname = norm.name || ("Player "+(p+1));
             const gender = norm.gender;
@@ -415,6 +443,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
             </li>`;
           }).join("")}
         </ul>
+        <button class="add-player-btn" onclick="window.__addPlayerSlot(${i})">+ Add player</button>
         <div class="roster-hint">Tap a name to edit · set M/F for mixed doubles pairing</div>
       </div>
     `;
@@ -448,6 +477,11 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     saveCache();
     update(ref(db, "players/"+teamIdx+"/"+playerIdx), {gender: value}).catch(e=>console.warn("Sync failed, will retry once reconnected:", e));
   };
+  window.__addPlayerSlot = function(teamIdx){
+    if(!ensureUnlocked()){ renderTeams(); return; }
+    rosterSize[teamIdx] = (rosterSize[teamIdx] || BASE_ROSTER_SIZE) + 1;
+    renderTeams();
+  };
   window.__resetTournament = function(){
     if(!ensureUnlocked()) return;
     if(confirm("Clear all saved team names, players and results for EVERYONE (all devices)? This can't be undone.")){
@@ -473,9 +507,10 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const val = snap.val();
     playersState = [0,1,2,3].map(i=>{
       const teamVal = val && val[i];
-      if(!teamVal) return [];
-      return Array.from({length:12}, (_,p)=> teamVal[p] || "");
+      const size = rosterSizeFromRemote(teamVal);
+      return Array.from({length:size}, (_,p)=> (teamVal && teamVal[p]) || "");
     });
+    [0,1,2,3].forEach(i => growRosterSize(i, playersState[i].length));
     saveCache();
     setSyncStatus("live");
     if(!isEditingTeamGrid()) renderTeams();

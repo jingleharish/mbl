@@ -354,7 +354,7 @@
     <div class="card-head">
       <div class="eyebrow">Today's session · 5:00 – 7:00 PM</div>
       <h2>Full Championship — Court Schedule</h2>
-      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking. MS/MD/WS/WD run six 15-minute slots across all 4 courts (5:00–6:30). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
+      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking, all 4 courts busy throughout. Men's Singles &amp; Doubles run first — slots 1–3 — followed by Women's Singles &amp; Doubles in slots 4–6 (5:00–6:30 total). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
     </div>
     <div id="round1-schedule"></div>
   </section>
@@ -490,19 +490,23 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   // Round-1 court/slot assignment: each round-robin pairing (2 ties, all 4 teams) gets two
   // 15-min slots back to back — one for MS+MD, one for WS+WD — on the same courts throughout.
   const R1_SCHEDULE = [
-    // Pairing 1: Tie1 (T1vT2) on courts 1-2, Tie6 (T3vT4) on courts 3-4
+    // Slots 1-3: ALL men's matches first (MS+MD together, all 4 courts busy every slot —
+    // combining categories per pairing already saturates the courts, so there's no idle
+    // court time within the men's block).
+    // Slot 1 — Pairing 1: Tie1 (T1vT2) on courts 1-2, Tie6 (T3vT4) on courts 3-4
     {tie:0, category:"MS", slot:1, court:1}, {tie:0, category:"MD", slot:1, court:2},
     {tie:5, category:"MS", slot:1, court:3}, {tie:5, category:"MD", slot:1, court:4},
-    {tie:0, category:"WS", slot:2, court:1}, {tie:0, category:"WD", slot:2, court:2},
-    {tie:5, category:"WS", slot:2, court:3}, {tie:5, category:"WD", slot:2, court:4},
-    // Pairing 2: Tie2 (T1vT3) on courts 1-2, Tie5 (T2vT4) on courts 3-4
-    {tie:1, category:"MS", slot:3, court:1}, {tie:1, category:"MD", slot:3, court:2},
-    {tie:4, category:"MS", slot:3, court:3}, {tie:4, category:"MD", slot:3, court:4},
-    {tie:1, category:"WS", slot:4, court:1}, {tie:1, category:"WD", slot:4, court:2},
-    {tie:4, category:"WS", slot:4, court:3}, {tie:4, category:"WD", slot:4, court:4},
-    // Pairing 3: Tie3 (T1vT4) on courts 1-2, Tie4 (T2vT3) on courts 3-4
-    {tie:2, category:"MS", slot:5, court:1}, {tie:2, category:"MD", slot:5, court:2},
-    {tie:3, category:"MS", slot:5, court:3}, {tie:3, category:"MD", slot:5, court:4},
+    // Slot 2 — Pairing 2: Tie2 (T1vT3) on courts 1-2, Tie5 (T2vT4) on courts 3-4
+    {tie:1, category:"MS", slot:2, court:1}, {tie:1, category:"MD", slot:2, court:2},
+    {tie:4, category:"MS", slot:2, court:3}, {tie:4, category:"MD", slot:2, court:4},
+    // Slot 3 — Pairing 3: Tie3 (T1vT4) on courts 1-2, Tie4 (T2vT3) on courts 3-4
+    {tie:2, category:"MS", slot:3, court:1}, {tie:2, category:"MD", slot:3, court:2},
+    {tie:3, category:"MS", slot:3, court:3}, {tie:3, category:"MD", slot:3, court:4},
+    // Slots 4-6: all women's matches (WS+WD), same pairing/court pattern as the men's block.
+    {tie:0, category:"WS", slot:4, court:1}, {tie:0, category:"WD", slot:4, court:2},
+    {tie:5, category:"WS", slot:4, court:3}, {tie:5, category:"WD", slot:4, court:4},
+    {tie:1, category:"WS", slot:5, court:1}, {tie:1, category:"WD", slot:5, court:2},
+    {tie:4, category:"WS", slot:5, court:3}, {tie:4, category:"WD", slot:5, court:4},
     {tie:2, category:"WS", slot:6, court:1}, {tie:2, category:"WD", slot:6, court:2},
     {tie:3, category:"WS", slot:6, court:3}, {tie:3, category:"WD", slot:6, court:4},
     // Mixed Doubles: only 4 teams exist, so at most 2 ties can run at once without a team
@@ -557,6 +561,17 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   function getTeamName(idx){ return teamsState[idx] || TEAM_DEFAULTS[idx]; }
   function getTeamNameSafe(idx){ return esc(getTeamName(idx)); }
 
+  // Firebase only returns a real JS array if every index 0..N is populated; a sparse
+  // roster (e.g. only slots 1 and 13 filled in) comes back as a plain object instead,
+  // where .length is undefined — so size must be derived from the highest numeric key.
+  function rosterSizeFromRemote(teamVal){
+    if(!teamVal) return 12;
+    if(Array.isArray(teamVal)) return Math.max(12, teamVal.length);
+    const keys = Object.keys(teamVal).map(k=>parseInt(k,10)).filter(n=>!isNaN(n));
+    const maxIdx = keys.length ? Math.max(...keys) : -1;
+    return Math.max(12, maxIdx+1);
+  }
+
   function normalizePlayer(raw){
     if(raw && typeof raw === "object") return {name: raw.name || "", gender: raw.gender || ""};
     return {name: raw || "", gender: ""};
@@ -564,7 +579,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   function rosterFor(teamIdx){
     const arr = playersState[teamIdx] || [];
-    return Array.from({length:12}, (_,p)=>{
+    const size = Math.max(12, arr.length);
+    return Array.from({length:size}, (_,p)=>{
       const norm = normalizePlayer(arr[p]);
       return {name: norm.name || ("Player "+(p+1)), gender: norm.gender};
     });
@@ -901,8 +917,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const val = snap.val();
     playersState = [0,1,2,3].map(i=>{
       const teamVal = val && val[i];
-      if(!teamVal) return [];
-      return Array.from({length:12}, (_,p)=> teamVal[p] || "");
+      const size = rosterSizeFromRemote(teamVal);
+      return Array.from({length:size}, (_,p)=> (teamVal && teamVal[p]) || "");
     });
     saveCache();
     if(currentMatchId && !isFocusInside("match-modal-panel")) renderMatchModal(findMatch(currentMatchId));
