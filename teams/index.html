@@ -315,8 +315,17 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // CHANGE THIS before your event — shared PIN required to edit anything. Must match index.html.
-  const EDIT_PIN = "2026";
+  // Shared PIN required to edit anything. Stored as a hash, not plaintext, so it's not
+  // trivially readable via "View Source" — this is cosmetic obfuscation, not real security;
+  // anyone with dev tools can still bypass this client-side-only check entirely.
+  // Must match index.html. To change the PIN: run simpleHash("your new pin") in a console,
+  // paste the result into both files.
+  const EDIT_PIN_HASH = "7c794d4f";
+  function simpleHash(str){
+    let h = 5381;
+    for(let i=0; i<str.length; i++){ h = ((h << 5) + h) + str.charCodeAt(i); h = h >>> 0; }
+    return h.toString(16);
+  }
   const UNLOCK_KEY = "bmlEditUnlocked_v1";
   const CACHE_KEY = "badmintonChampionship_v1";
 
@@ -369,7 +378,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     if(isUnlocked()) return true;
     const pin = prompt("Enter the event PIN to make changes:");
     if(pin === null) return false;
-    if(pin === EDIT_PIN){
+    if(simpleHash(pin) === EDIT_PIN_HASH){
       try{ localStorage.setItem(UNLOCK_KEY, "1"); }catch(e){}
       updateLockBadge();
       return true;
