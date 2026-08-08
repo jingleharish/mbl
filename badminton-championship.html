@@ -47,7 +47,7 @@
   a{color:inherit;}
 
   /* ---------- NAV ---------- */
-  .site-nav{ display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
+  .site-nav{ display:flex; align-items:center; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
   .site-nav a{
     font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
     color:rgba(247,245,239,0.75); text-decoration:none; padding:8px 16px; border-radius:100px;
@@ -55,6 +55,19 @@
   }
   .site-nav a:hover{ border-color:var(--amber-light); color:var(--line); }
   .site-nav a.active{ background:var(--amber); border-color:var(--amber); color:var(--ink); }
+  .lock-pill{
+    margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    color:rgba(247,245,239,0.75); background:none; border:1px solid rgba(247,245,239,0.25); border-radius:100px;
+    padding:8px 16px; cursor:pointer; transition:all .15s ease;
+  }
+  .lock-pill:hover{ border-color:var(--amber-light); color:var(--line); }
+  .lock-pill.unlocked{ background:var(--court-light); border-color:var(--court-light); color:var(--line); }
+  .sync-dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%; background:rgba(247,245,239,0.35);
+    margin-right:6px; vertical-align:middle;
+  }
+  .sync-dot.live{ background:#5FCB8F; box-shadow:0 0 0 3px rgba(95,203,143,0.25); }
+  .sync-dot.offline{ background:var(--red); }
 
   /* ---------- HERO ---------- */
   .hero{ padding:10px 0 28px; border-bottom:1px solid rgba(247,245,239,0.15); margin-bottom:28px;}
@@ -268,6 +281,7 @@
     .roster{ font-size:14px; }
     th, td{ padding:9px 8px; font-size:12.5px; white-space:nowrap; }
     .modal-panel{ padding:20px 18px 18px; }
+    .lock-pill{ margin-left:0; }
   }
   @media print{
     body{ background:#fff; }
@@ -285,6 +299,7 @@
   <nav class="site-nav">
     <a href="#" class="active">Schedule &amp; Standings</a>
     <a href="teams/">Teams &amp; Squads</a>
+    <button class="lock-pill" id="lock-pill" onclick="window.__toggleLock()"><span class="sync-dot" id="sync-dot"></span>View only — tap to unlock editing</button>
   </nav>
 
   <!-- HERO -->
@@ -339,7 +354,7 @@
     <div class="card-head">
       <div class="eyebrow">Today's session · 5:00 – 7:00 PM</div>
       <h2>Full Championship — Court Schedule</h2>
-      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking. MS/MD/WS/WD run six 15-minute slots across all 4 courts (5:00–6:30). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap the winning team on each card to record a result — the league table below updates instantly, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
+      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking. MS/MD/WS/WD run six 15-minute slots across all 4 courts (5:00–6:30). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
     </div>
     <div id="round1-schedule"></div>
   </section>
@@ -366,8 +381,8 @@
   </section>
 
   <footer>
-    <p><b>Editable document</b> — slot times, match players and every score box on this page can be edited directly in the browser.<br>
-    Results are saved automatically to this browser (via localStorage) — reloading the page won't lose them. This is per-browser/device only, not shared across devices.<br>
+    <p><b>Synced live</b> — team names, rosters, slot times, match players and every score box on this page sync instantly across every device via Firebase. A copy is also cached in this browser so the page still works if you briefly lose signal.<br>
+    Editing requires the event PIN — tap the lock pill above to unlock this device.<br>
     <button onclick="window.__resetTournament()" style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
   </footer>
 </div>
@@ -377,14 +392,32 @@
   <div class="modal-panel" id="match-modal-panel" role="dialog" aria-modal="true"></div>
 </div>
 
-<script>
-(function(){
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBedDt7dNpU5OB8qCHY87exfKA8fbedqmM",
+    authDomain: "meridian-badminton.firebaseapp.com",
+    databaseURL: "https://meridian-badminton-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "meridian-badminton",
+    storageBucket: "meridian-badminton.firebasestorage.app",
+    messagingSenderId: "449407199469",
+    appId: "1:449407199469:web:63cd08faf4da6bf2eec4e4"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // CHANGE THIS before your event — shared PIN required to edit anything.
+  const EDIT_PIN = "2026";
+  const UNLOCK_KEY = "bmlEditUnlocked_v1";
+  const CACHE_KEY = "badmintonChampionship_v1";
+
   const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
   const PAIRS = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]; // 6 ties
   const CATS = ["MS","MD","WS","WD","XD"];
   const CAT_LABEL = {MS:"Men's Singles", MD:"Men's Doubles", WS:"Women's Singles", WD:"Women's Doubles", XD:"Mixed Doubles"};
   const ROUND_OF = {MS:1, MD:1, WS:1, WD:1, XD:1};
-  const STORAGE_KEY = "badmintonChampionship_v1";
 
   function esc(s){
     const d = document.createElement("div");
@@ -392,25 +425,67 @@
     return d.innerHTML;
   }
 
-  function loadState(){
+  // ---------- LOCAL CACHE (instant paint + offline fallback) ----------
+  function loadCache(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(CACHE_KEY);
       return raw ? JSON.parse(raw) : null;
     }catch(e){ return null; }
   }
-
-  function saveState(){
+  function saveCache(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const existing = raw ? JSON.parse(raw) : {};
       const matchData = {};
       matches.forEach(m => { matchData[m.id] = {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB}; });
-      existing.matches = matchData;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-    }catch(e){ console.warn("Could not save to localStorage:", e); }
+      localStorage.setItem(CACHE_KEY, JSON.stringify({teams:teamsState, players:playersState, matches:matchData}));
+    }catch(e){ console.warn("Could not save local cache:", e); }
   }
 
-  const SAVED = loadState();
+  // ---------- PIN GATE ----------
+  function isUnlocked(){
+    try{ return localStorage.getItem(UNLOCK_KEY) === "1"; }catch(e){ return false; }
+  }
+  function ensureUnlocked(){
+    if(isUnlocked()) return true;
+    const pin = prompt("Enter the event PIN to make changes:");
+    if(pin === null) return false;
+    if(pin === EDIT_PIN){
+      try{ localStorage.setItem(UNLOCK_KEY, "1"); }catch(e){}
+      updateLockBadge();
+      return true;
+    }
+    alert("Incorrect PIN.");
+    return false;
+  }
+  window.__toggleLock = function(){
+    if(isUnlocked()){
+      try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+      updateLockBadge();
+    } else {
+      ensureUnlocked();
+    }
+  };
+  function updateLockBadge(){
+    const btn = document.getElementById("lock-pill");
+    if(!btn) return;
+    const dot = document.getElementById("sync-dot");
+    if(isUnlocked()){
+      btn.lastChild.textContent = "Editing unlocked — tap to lock";
+      btn.classList.add("unlocked");
+    } else {
+      btn.lastChild.textContent = "View only — tap to unlock editing";
+      btn.classList.remove("unlocked");
+    }
+  }
+  function setSyncStatus(state){
+    const dot = document.getElementById("sync-dot");
+    if(!dot) return;
+    dot.classList.remove("live","offline");
+    if(state) dot.classList.add(state);
+  }
+  function isFocusInside(id){
+    const el = document.getElementById(id);
+    return !!(el && document.activeElement && el.contains(document.activeElement));
+  }
 
   // Round-1 court/slot assignment: each round-robin pairing (2 ties, all 4 teams) gets two
   // 15-min slots back to back — one for MS+MD, one for WS+WD — on the same courts throughout.
@@ -442,6 +517,10 @@
     7:"6:30 – 6:40 PM", 8:"6:40 – 6:50 PM", 9:"6:50 – 7:00 PM"
   };
 
+  // ---------- LIVE STATE (populated from cache first, then kept in sync by Firebase) ----------
+  let teamsState = TEAM_DEFAULTS.slice();
+  let playersState = [[],[],[],[]];
+
   // Build full 30-match list
   const matches = [];
   PAIRS.forEach((pair, tieIdx) => {
@@ -456,26 +535,39 @@
       });
     });
   });
-  if(SAVED && SAVED.matches){
-    matches.forEach(m => {
-      const sm = SAVED.matches[m.id];
-      if(sm){
-        m.winner = (sm.winner===0||sm.winner===1) ? sm.winner : null;
-        m.score = sm.score || "";
-        m.playerA = sm.playerA || "";
-        m.playerB = sm.playerB || "";
-      }
-    });
+
+  // Bootstrap from local cache so the page paints instantly before Firebase responds.
+  const CACHED = loadCache();
+  if(CACHED){
+    if(CACHED.teams) teamsState = TEAM_DEFAULTS.map((d,i)=> CACHED.teams[i] || d);
+    if(CACHED.players) playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
+    if(CACHED.matches){
+      matches.forEach(m => {
+        const sm = CACHED.matches[m.id];
+        if(sm){
+          m.winner = (sm.winner===0||sm.winner===1) ? sm.winner : null;
+          m.score = sm.score || "";
+          m.playerA = sm.playerA || "";
+          m.playerB = sm.playerB || "";
+        }
+      });
+    }
   }
 
-  function getTeamName(idx){
-    return (SAVED && SAVED.teams && SAVED.teams[idx]) ? SAVED.teams[idx] : TEAM_DEFAULTS[idx];
-  }
+  function getTeamName(idx){ return teamsState[idx] || TEAM_DEFAULTS[idx]; }
   function getTeamNameSafe(idx){ return esc(getTeamName(idx)); }
 
+  function normalizePlayer(raw){
+    if(raw && typeof raw === "object") return {name: raw.name || "", gender: raw.gender || ""};
+    return {name: raw || "", gender: ""};
+  }
+
   function rosterFor(teamIdx){
-    const saved = SAVED && SAVED.players && SAVED.players[teamIdx];
-    return Array.from({length:12}, (_,p)=> (saved && saved[p]) ? saved[p] : ("Player "+(p+1)));
+    const arr = playersState[teamIdx] || [];
+    return Array.from({length:12}, (_,p)=>{
+      const norm = normalizePlayer(arr[p]);
+      return {name: norm.name || ("Player "+(p+1)), gender: norm.gender};
+    });
   }
 
   function findMatch(id){ return matches.find(m=>m.id===id); }
@@ -483,6 +575,14 @@
   let currentMatchId = null;
 
   function isDoublesCategory(category){ return category==="MD" || category==="WD" || category==="XD"; }
+
+  // MS/MD are men's, WS/WD are women's, XD needs one of each — slot 0 = men, slot 1 = women.
+  function requiredGender(category, slotIdx){
+    if(category==="MS" || category==="MD") return "M";
+    if(category==="WS" || category==="WD") return "F";
+    if(category==="XD") return slotIdx===0 ? "M" : "F";
+    return null;
+  }
 
   function scorePlaceholder(category){
     return (category==="MS" || category==="WS") ? "Score e.g. 11-7" : "Score e.g. 15-12";
@@ -559,11 +659,17 @@
   // ---------- MATCH STATUS MODAL (referee view) ----------
   function playerSelectHTML(m, side, slotIdx, teamIdx){
     const roster = rosterFor(teamIdx);
+    const reqGender = requiredGender(m.category, slotIdx);
+    // Players tagged with the required gender only; players with no gender set yet stay visible too
+    // (so rosters that haven't been tagged don't just vanish from the picker).
+    const filtered = reqGender ? roster.filter(p => !p.gender || p.gender===reqGender) : roster;
+    const list = filtered.length ? filtered : roster;
     const rawVal = side==='A' ? m.playerA : m.playerB;
     const parts = isDoublesCategory(m.category) ? (rawVal ? rawVal.split(" & ") : []) : [rawVal || ""];
     const selected = parts[slotIdx] || "";
-    const opts = ['<option value="">— Select player —</option>']
-      .concat(roster.map(n => `<option value="${esc(n)}" ${n===selected?'selected':''}>${esc(n)}</option>`));
+    const placeholderLabel = reqGender==="M" ? "— Select men's player —" : reqGender==="F" ? "— Select women's player —" : "— Select player —";
+    const opts = [`<option value="">${placeholderLabel}</option>`]
+      .concat(list.map(p => `<option value="${esc(p.name)}" ${p.name===selected?'selected':''}>${esc(p.name)}${p.gender?` (${p.gender})`:''}</option>`));
     return `<select class="player-select" onchange="window.__setPlayerSlot('${m.id}','${side}',${slotIdx},this.value)">${opts.join("")}</select>`;
   }
 
@@ -616,7 +722,15 @@
     currentMatchId = null;
     document.getElementById("match-modal-overlay").classList.remove("open");
   };
+
+  function pushMatchUpdate(m){
+    saveCache();
+    update(ref(db, "matches/"+m.id), {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB})
+      .catch(e => console.warn("Sync failed, will retry once reconnected:", e));
+  }
+
   window.__setPlayerSlot = function(id, side, slotIdx, value){
+    if(!ensureUnlocked()){ renderMatchModal(findMatch(id)); return; }
     const m = findMatch(id);
     const key = side==='A' ? 'playerA' : 'playerB';
     if(isDoublesCategory(m.category)){
@@ -627,7 +741,7 @@
     } else {
       m[key] = value;
     }
-    saveState();
+    pushMatchUpdate(m);
     renderRound1();
   };
 
@@ -743,21 +857,25 @@
 
   // ---------- EVENT HANDLERS (exposed globally for inline onclick/oninput) ----------
   window.__setWinner = function(id, val){
+    if(!ensureUnlocked()) return;
     const m = findMatch(id);
     m.winner = (m.winner === val) ? null : val;
-    saveState();
+    pushMatchUpdate(m);
     updateAll();
     if(currentMatchId === id) renderMatchModal(m);
   };
   window.__setScore = function(id, val){
+    if(!ensureUnlocked()){ renderMatchModal(findMatch(id)); return; }
     const m = findMatch(id);
     m.score = val;
-    saveState();
+    pushMatchUpdate(m);
     renderRound1();
   };
   window.__resetTournament = function(){
-    if(confirm("Clear all saved team names, players and results? This can't be undone.")){
-      try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    if(!ensureUnlocked()) return;
+    if(confirm("Clear all saved team names, players and results for EVERYONE (all devices)? This can't be undone.")){
+      try{ localStorage.removeItem(CACHE_KEY); localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+      remove(ref(db)).catch(e=>console.warn("Could not clear remote data:", e));
       location.reload();
     }
   };
@@ -767,8 +885,43 @@
     renderStandings();
   }
 
+  // Initial paint from cache, then wire up live Firebase sync.
+  updateLockBadge();
   updateAll();
-})();
+
+  onValue(ref(db, "teams"), snap => {
+    const val = snap.val();
+    teamsState = TEAM_DEFAULTS.map((d,i)=> (val && val[i]) ? val[i] : d);
+    saveCache();
+    setSyncStatus("live");
+    updateAll();
+  }, () => setSyncStatus("offline"));
+
+  onValue(ref(db, "players"), snap => {
+    const val = snap.val();
+    playersState = [0,1,2,3].map(i=>{
+      const teamVal = val && val[i];
+      if(!teamVal) return [];
+      return Array.from({length:12}, (_,p)=> teamVal[p] || "");
+    });
+    saveCache();
+    if(currentMatchId && !isFocusInside("match-modal-panel")) renderMatchModal(findMatch(currentMatchId));
+  }, () => setSyncStatus("offline"));
+
+  onValue(ref(db, "matches"), snap => {
+    const val = snap.val() || {};
+    matches.forEach(m => {
+      const sm = val[m.id];
+      m.winner = sm && (sm.winner===0 || sm.winner===1) ? sm.winner : null;
+      m.score = (sm && sm.score) || "";
+      m.playerA = (sm && sm.playerA) || "";
+      m.playerB = (sm && sm.playerB) || "";
+    });
+    saveCache();
+    setSyncStatus("live");
+    updateAll();
+    if(currentMatchId && !isFocusInside("match-modal-panel")) renderMatchModal(findMatch(currentMatchId));
+  }, () => setSyncStatus("offline"));
 </script>
 </body>
 </html>

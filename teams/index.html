@@ -47,7 +47,7 @@
   a{color:inherit;}
 
   /* ---------- NAV ---------- */
-  .site-nav{ display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
+  .site-nav{ display:flex; align-items:center; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
   .site-nav a{
     font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
     color:rgba(247,245,239,0.75); text-decoration:none; padding:8px 16px; border-radius:100px;
@@ -55,6 +55,19 @@
   }
   .site-nav a:hover{ border-color:var(--amber-light); color:var(--line); }
   .site-nav a.active{ background:var(--amber); border-color:var(--amber); color:var(--ink); }
+  .lock-pill{
+    margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    color:rgba(247,245,239,0.75); background:none; border:1px solid rgba(247,245,239,0.25); border-radius:100px;
+    padding:8px 16px; cursor:pointer; transition:all .15s ease;
+  }
+  .lock-pill:hover{ border-color:var(--amber-light); color:var(--line); }
+  .lock-pill.unlocked{ background:var(--court-light); border-color:var(--court-light); color:var(--line); }
+  .sync-dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%; background:rgba(247,245,239,0.35);
+    margin-right:6px; vertical-align:middle;
+  }
+  .sync-dot.live{ background:#5FCB8F; box-shadow:0 0 0 3px rgba(95,203,143,0.25); }
+  .sync-dot.offline{ background:var(--red); }
 
   /* ---------- HERO ---------- */
   .hero{ padding:10px 0 28px; border-bottom:1px solid rgba(247,245,239,0.15); margin-bottom:28px;}
@@ -111,6 +124,11 @@
   .roster [contenteditable]{ outline:none; flex:1; }
   .roster [contenteditable]:focus{ background:#fff; border-radius:3px; }
   .roster-hint{font-size:11px; color:var(--ink-soft); margin-top:10px; opacity:0.75;}
+  .gender-select{
+    font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 3px; border-radius:5px;
+    border:1px solid rgba(18,48,44,0.18); background:#fff; color:var(--ink-soft); flex:none; width:42px;
+  }
+  .gender-select:focus{ outline:2px solid var(--amber); }
 
   /* ---------- SCHEDULE ---------- */
   .slot-block{ margin-top:26px; }
@@ -139,13 +157,6 @@
   .versus{ display:flex; align-items:flex-start; gap:10px; margin:8px 0 12px;}
   .versus .side{ flex:1; }
   .versus .side-name{ font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
-  .versus .player-line{
-    font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-soft); margin-top:3px;
-    outline:none; min-height:14px; border-bottom:1px dashed transparent;
-  }
-  .versus .player-line:hover, .versus .player-line:focus{ border-bottom-color:var(--amber); }
-  .versus .player-line:focus{ background:#fff; }
-  .versus .player-line:empty:before{ content:attr(data-placeholder); color:rgba(18,48,44,0.35); }
   .versus .vs{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card-alt); padding:3px 7px; border-radius:6px; align-self:center;}
   .win-row{ display:flex; gap:8px; margin-bottom:8px;}
   .win-btn{
@@ -224,9 +235,10 @@
     .status-banner{ flex-wrap:wrap; padding:16px 18px; }
     .status-banner .txt h3{ font-size:22px; }
     /* Inputs & contenteditable fields at 16px+ prevents iOS Safari auto-zoom on focus */
-    .score-input, .team-name, .roster [contenteditable], .slot-time, .player-line{ font-size:16px; }
+    .score-input, .team-name, .roster [contenteditable], .slot-time, .gender-select{ font-size:16px; }
     .roster{ font-size:14px; }
     th, td{ padding:9px 8px; font-size:12.5px; white-space:nowrap; }
+    .lock-pill{ margin-left:0; }
   }
   @media print{
     body{ background:#fff; }
@@ -244,13 +256,14 @@
   <nav class="site-nav">
     <a href="../">Schedule &amp; Standings</a>
     <a href="#" class="active">Teams &amp; Squads</a>
+    <button class="lock-pill" id="lock-pill" onclick="window.__toggleLock()"><span class="sync-dot" id="sync-dot"></span>View only — tap to unlock editing</button>
   </nav>
 
   <!-- HERO -->
   <header class="hero">
     <div class="eyebrow">Round Robin · 4 Teams · 5 Categories</div>
     <h1>Teams &amp; Squads</h1>
-    <p class="sub">Click any team name to rename it, or tap a player slot to edit the roster. Mark player gender in brackets if useful for planning MS/WS/mixed pairings. Changes save automatically and show up on the schedule immediately.</p>
+    <p class="sub">Click any team name to rename it, or tap a player slot to edit the roster. Mark player gender in brackets if useful for planning MS/WS/mixed pairings. Changes sync live to every device — including the schedule page.</p>
   </header>
 
   <!-- TEAMS -->
@@ -264,16 +277,34 @@
   </section>
 
   <footer>
-    <p><b>Editable document</b> — team names and every player slot on this page can be edited directly in the browser.<br>
-    Names are saved automatically to this browser (via localStorage) — reloading the page won't lose them. This is per-browser/device only, not shared across devices.<br>
+    <p><b>Synced live</b> — team names and every player slot on this page sync instantly across every device via Firebase. A copy is also cached in this browser so the page still works if you briefly lose signal.<br>
+    Editing requires the event PIN — tap the lock pill above to unlock this device.<br>
     <button onclick="window.__resetTournament()" style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; background:none; border:1px solid rgba(247,245,239,0.35); color:rgba(247,245,239,0.75); padding:6px 14px; border-radius:100px; cursor:pointer;">Reset tournament data</button></p>
   </footer>
 </div>
 
-<script>
-(function(){
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBedDt7dNpU5OB8qCHY87exfKA8fbedqmM",
+    authDomain: "meridian-badminton.firebaseapp.com",
+    databaseURL: "https://meridian-badminton-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "meridian-badminton",
+    storageBucket: "meridian-badminton.firebasestorage.app",
+    messagingSenderId: "449407199469",
+    appId: "1:449407199469:web:63cd08faf4da6bf2eec4e4"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // CHANGE THIS before your event — shared PIN required to edit anything. Must match index.html.
+  const EDIT_PIN = "2026";
+  const UNLOCK_KEY = "bmlEditUnlocked_v1";
+  const CACHE_KEY = "badmintonChampionship_v1";
+
   const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
-  const STORAGE_KEY = "badmintonChampionship_v1";
 
   function esc(s){
     const d = document.createElement("div");
@@ -281,68 +312,174 @@
     return d.innerHTML;
   }
 
-  function loadState(){
+  function normalizePlayer(raw){
+    if(raw && typeof raw === "object") return {name: raw.name || "", gender: raw.gender || ""};
+    return {name: raw || "", gender: ""};
+  }
+
+  // ---------- LOCAL CACHE (instant paint + offline fallback) ----------
+  function loadCache(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(CACHE_KEY);
       return raw ? JSON.parse(raw) : null;
     }catch(e){ return null; }
   }
-
-  function saveState(){
+  function saveCache(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(CACHE_KEY);
       const existing = raw ? JSON.parse(raw) : {};
-      const teams = [0,1,2,3].map(i=>getTeamName(i));
-      const players = [0,1,2,3].map(i=>{
-        const card = document.querySelector('.team-card[data-idx="'+i+'"]');
-        if(!card) return [];
-        return Array.from(card.querySelectorAll(".roster li span[contenteditable]")).map(s=>s.textContent.trim());
-      });
-      existing.teams = teams;
-      existing.players = players;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-    }catch(e){ console.warn("Could not save to localStorage:", e); }
+      existing.teams = teamsState;
+      existing.players = playersState;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(existing));
+    }catch(e){ console.warn("Could not save local cache:", e); }
   }
 
-  const SAVED = loadState();
+  // ---------- PIN GATE ----------
+  function isUnlocked(){
+    try{ return localStorage.getItem(UNLOCK_KEY) === "1"; }catch(e){ return false; }
+  }
+  function ensureUnlocked(){
+    if(isUnlocked()) return true;
+    const pin = prompt("Enter the event PIN to make changes:");
+    if(pin === null) return false;
+    if(pin === EDIT_PIN){
+      try{ localStorage.setItem(UNLOCK_KEY, "1"); }catch(e){}
+      updateLockBadge();
+      return true;
+    }
+    alert("Incorrect PIN.");
+    return false;
+  }
+  window.__toggleLock = function(){
+    if(isUnlocked()){
+      try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+      updateLockBadge();
+    } else {
+      ensureUnlocked();
+    }
+  };
+  function updateLockBadge(){
+    const btn = document.getElementById("lock-pill");
+    if(!btn) return;
+    if(isUnlocked()){
+      btn.lastChild.textContent = "Editing unlocked — tap to lock";
+      btn.classList.add("unlocked");
+    } else {
+      btn.lastChild.textContent = "View only — tap to unlock editing";
+      btn.classList.remove("unlocked");
+    }
+  }
+  function setSyncStatus(state){
+    const dot = document.getElementById("sync-dot");
+    if(!dot) return;
+    dot.classList.remove("live","offline");
+    if(state) dot.classList.add(state);
+  }
+  function isEditingTeamGrid(){
+    const active = document.activeElement;
+    return !!(active && active.closest && active.closest("#team-grid"));
+  }
 
-  function getTeamName(idx){
-    const el = document.getElementById("team-name-"+idx);
-    return el ? el.textContent.trim() || TEAM_DEFAULTS[idx] : TEAM_DEFAULTS[idx];
+  // ---------- LIVE STATE ----------
+  let teamsState = TEAM_DEFAULTS.slice();
+  let playersState = [[],[],[],[]];
+
+  const CACHED = loadCache();
+  if(CACHED){
+    if(CACHED.teams) teamsState = TEAM_DEFAULTS.map((d,i)=> CACHED.teams[i] || d);
+    if(CACHED.players) playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
   }
 
   // ---------- RENDER: TEAMS ----------
   function renderTeams(){
     const grid = document.getElementById("team-grid");
     grid.innerHTML = TEAM_DEFAULTS.map((defaultName, i) => {
-      const teamName = (SAVED && SAVED.teams && SAVED.teams[i]) ? SAVED.teams[i] : defaultName;
-      const savedPlayers = (SAVED && SAVED.players && SAVED.players[i]) ? SAVED.players[i] : [];
+      const teamName = teamsState[i] || defaultName;
+      const savedPlayers = playersState[i] || [];
       return `
       <div class="team-card" data-idx="${i}">
-        <div class="team-name" id="team-name-${i}" contenteditable="true" oninput="window.__saveTeams()">${esc(teamName)}</div>
+        <div class="team-name" id="team-name-${i}" contenteditable="true" oninput="window.__setTeamName(${i}, this)">${esc(teamName)}</div>
         <ul class="roster">
           ${Array.from({length:12}, (_,p)=>{
-            const pname = savedPlayers[p] || ("Player "+(p+1));
-            return `<li><span class="no">${p+1}</span><span contenteditable="true" oninput="window.__saveTeams()">${esc(pname)}</span></li>`;
+            const norm = normalizePlayer(savedPlayers[p]);
+            const pname = norm.name || ("Player "+(p+1));
+            const gender = norm.gender;
+            return `<li>
+              <span class="no">${p+1}</span>
+              <span contenteditable="true" oninput="window.__setPlayerName(${i}, ${p}, this)">${esc(pname)}</span>
+              <select class="gender-select" onchange="window.__setPlayerGender(${i}, ${p}, this.value)" title="Gender (used to filter mixed doubles pairing)">
+                <option value="" ${gender===''?'selected':''}>–</option>
+                <option value="M" ${gender==='M'?'selected':''}>M</option>
+                <option value="F" ${gender==='F'?'selected':''}>F</option>
+              </select>
+            </li>`;
           }).join("")}
         </ul>
-        <div class="roster-hint">Tap any player name to edit</div>
+        <div class="roster-hint">Tap a name to edit · set M/F for mixed doubles pairing</div>
       </div>
     `;
     }).join("");
   }
 
   // ---------- EVENT HANDLERS (exposed globally for inline onclick/oninput) ----------
-  window.__saveTeams = function(){ saveState(); };
+  window.__setTeamName = function(idx, el){
+    if(!ensureUnlocked()){ renderTeams(); return; }
+    const val = el.textContent.trim() || TEAM_DEFAULTS[idx];
+    teamsState[idx] = val;
+    saveCache();
+    update(ref(db, "teams"), {[idx]: val}).catch(e=>console.warn("Sync failed, will retry once reconnected:", e));
+  };
+  window.__setPlayerName = function(teamIdx, playerIdx, el){
+    if(!ensureUnlocked()){ renderTeams(); return; }
+    const val = el.textContent.trim();
+    if(!playersState[teamIdx]) playersState[teamIdx] = [];
+    const cur = normalizePlayer(playersState[teamIdx][playerIdx]);
+    cur.name = val;
+    playersState[teamIdx][playerIdx] = cur;
+    saveCache();
+    update(ref(db, "players/"+teamIdx+"/"+playerIdx), {name: val}).catch(e=>console.warn("Sync failed, will retry once reconnected:", e));
+  };
+  window.__setPlayerGender = function(teamIdx, playerIdx, value){
+    if(!ensureUnlocked()){ renderTeams(); return; }
+    if(!playersState[teamIdx]) playersState[teamIdx] = [];
+    const cur = normalizePlayer(playersState[teamIdx][playerIdx]);
+    cur.gender = value;
+    playersState[teamIdx][playerIdx] = cur;
+    saveCache();
+    update(ref(db, "players/"+teamIdx+"/"+playerIdx), {gender: value}).catch(e=>console.warn("Sync failed, will retry once reconnected:", e));
+  };
   window.__resetTournament = function(){
-    if(confirm("Clear all saved team names, players and results? This can't be undone.")){
-      try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    if(!ensureUnlocked()) return;
+    if(confirm("Clear all saved team names, players and results for EVERYONE (all devices)? This can't be undone.")){
+      try{ localStorage.removeItem(CACHE_KEY); localStorage.removeItem(UNLOCK_KEY); }catch(e){}
+      remove(ref(db)).catch(e=>console.warn("Could not clear remote data:", e));
       location.reload();
     }
   };
 
+  // Initial paint from cache, then wire up live Firebase sync.
+  updateLockBadge();
   renderTeams();
-})();
+
+  onValue(ref(db, "teams"), snap => {
+    const val = snap.val();
+    teamsState = TEAM_DEFAULTS.map((d,i)=> (val && val[i]) ? val[i] : d);
+    saveCache();
+    setSyncStatus("live");
+    if(!isEditingTeamGrid()) renderTeams();
+  }, () => setSyncStatus("offline"));
+
+  onValue(ref(db, "players"), snap => {
+    const val = snap.val();
+    playersState = [0,1,2,3].map(i=>{
+      const teamVal = val && val[i];
+      if(!teamVal) return [];
+      return Array.from({length:12}, (_,p)=> teamVal[p] || "");
+    });
+    saveCache();
+    setSyncStatus("live");
+    if(!isEditingTeamGrid()) renderTeams();
+  }, () => setSyncStatus("offline"));
 </script>
 </body>
 </html>
