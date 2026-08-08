@@ -153,8 +153,13 @@
   .pending-tag{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); font-style:italic;}
   .versus{ display:flex; align-items:flex-start; gap:10px; margin:8px 0 12px;}
   .versus .side{ flex:1; }
-  .versus .side.winner .side-name{ color:var(--court-deep); }
   .versus .side-name{ font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:600; color:var(--ink); line-height:1.15;}
+  .versus .side.winner .side-name{ color:var(--court-deep); font-weight:700; }
+  .winner-check{
+    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    border-radius:50%; background:var(--amber); color:#fff; font-size:10px; font-weight:700;
+    margin-right:5px; vertical-align:middle; flex:none;
+  }
   .versus .player-summary{
     font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-soft); margin-top:3px; min-height:14px;
   }
@@ -633,12 +638,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         </div>
         <div class="versus">
           <div class="side ${m.winner===0?'winner':''}">
-            <div class="side-name">${nameA}</div>
+            <div class="side-name">${m.winner===0?'<span class="winner-check">✓</span>':''}${nameA}</div>
             <div class="player-summary ${m.playerA?'':'empty'}">${playerAText}</div>
           </div>
           <div class="vs">TIE ${m.tie+1}</div>
           <div class="side ${m.winner===1?'winner':''}" style="text-align:right">
-            <div class="side-name">${nameB}</div>
+            <div class="side-name">${nameB}${m.winner===1?'<span class="winner-check">✓</span>':''}</div>
             <div class="player-summary ${m.playerB?'':'empty'}">${playerBText}</div>
           </div>
         </div>
@@ -703,7 +708,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const isWinner = (side==='A' && m.winner===0) || (side==='B' && m.winner===1);
     return `
       <div class="modal-side ${isWinner?'winner':''}">
-        <h4>${esc(teamName)}</h4>
+        <h4>${isWinner?'<span class="winner-check">✓</span>':''}${esc(teamName)}</h4>
         ${playerSelectHTML(m, side, 0, teamIdx)}
         ${doubles ? playerSelectHTML(m, side, 1, teamIdx) : ""}
       </div>
@@ -884,6 +889,13 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   window.__setWinner = function(id, val){
     if(!ensureUnlocked()) return;
     const m = findMatch(id);
+    const settingNewWinner = val !== null && m.winner !== val;
+    if(settingNewWinner && !m.score.trim()){
+      alert("Enter the score before selecting a winner.");
+      const scoreInput = document.getElementById("modal-score-input");
+      if(scoreInput) scoreInput.focus();
+      return;
+    }
     m.winner = (m.winner === val) ? null : val;
     pushMatchUpdate(m);
     updateAll();
