@@ -770,9 +770,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     }).join("");
     return `
       <div class="modal-move">
-        <label for="move-slot-select">Move match to a different slot</label>
-        <select id="move-slot-select" class="player-select">${options}</select>
-        <button class="clear-btn" style="margin-top:8px;" onclick="window.__moveMatch('${m.id}', document.getElementById('move-slot-select').value)">Move match (needs passcode)</button>
+        <label for="move-slot-select">Move match to a different slot (asks for a passcode)</label>
+        <select id="move-slot-select" class="player-select" onchange="window.__moveMatch('${m.id}', this.value)">${options}</select>
       </div>
     `;
   }
