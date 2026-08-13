@@ -365,9 +365,9 @@
   <!-- FULL SCHEDULE -->
   <section class="card">
     <div class="card-head">
-      <div class="eyebrow">14th August 2026 · 5:00 – 7:45 PM (est.) · Play Arena, Sarjapur</div>
+      <div class="eyebrow">14th August 2026 · 5:00 – 7:00 PM · Play Arena, Sarjapur</div>
       <h2>Full League — Court Schedule</h2>
-      <p>All 21 matches, all 7 categories, across the 3 ties. With only 3 teams, ties run one at a time rather than in parallel — each tie gets two back-to-back slots: its 3 men's matches (MS, MD1, MD2 — courts 1–3) followed by its 4 women's &amp; mixed matches (WS, WD, XD1, XD2 — all 4 courts). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere. Slot times are estimates based on the higher point totals (up to 21) and are fully editable if timings shift on the day.</p>
+      <p>All 21 matches, all 7 categories, fit inside the 2-hour booking. The first hour (5:00–6:00) runs every Men's Singles &amp; Doubles match across all 3 ties, one tie per slot on courts 1–3 (court 4 sits free — courts only run at full capacity later). The second hour (6:00–7:00) runs every Women's &amp; Mixed Doubles match, one tie per slot using all 4 courts. Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere. Slot times are editable if timings shift on the day.</p>
     </div>
     <div id="round1-schedule"></div>
   </section>
@@ -521,23 +521,22 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   // as many of the 4 courts as each ties's category block needs. Each tie gets 2 back-to-back
   // slots: the 3 men's matches (MS/MD1/MD2, courts 1-3) then the 4 women's+mixed matches
   // (WS/WD/XD1/XD2, all 4 courts).
+  // First hour: all 9 men's matches (3 courts each slot, court 4 free — courts are only ever
+  // fully packed in the second hour). Second hour: all 12 women's + mixed matches (all 4 courts).
   const R1_SCHEDULE = [
-    // Tie 1: Team A vs Team B
+    // Slots 1-3 — Men's (MS/MD1/MD2), one tie per slot, courts 1-3, court 4 free
     {tie:0, category:"MS", slot:1, court:1}, {tie:0, category:"MD1", slot:1, court:2}, {tie:0, category:"MD2", slot:1, court:3},
-    {tie:0, category:"WS", slot:2, court:1}, {tie:0, category:"WD", slot:2, court:2}, {tie:0, category:"XD1", slot:2, court:3}, {tie:0, category:"XD2", slot:2, court:4},
-    // Tie 2: Team A vs Team C
-    {tie:1, category:"MS", slot:3, court:1}, {tie:1, category:"MD1", slot:3, court:2}, {tie:1, category:"MD2", slot:3, court:3},
-    {tie:1, category:"WS", slot:4, court:1}, {tie:1, category:"WD", slot:4, court:2}, {tie:1, category:"XD1", slot:4, court:3}, {tie:1, category:"XD2", slot:4, court:4},
-    // Tie 3: Team B vs Team C
-    {tie:2, category:"MS", slot:5, court:1}, {tie:2, category:"MD1", slot:5, court:2}, {tie:2, category:"MD2", slot:5, court:3},
+    {tie:1, category:"MS", slot:2, court:1}, {tie:1, category:"MD1", slot:2, court:2}, {tie:1, category:"MD2", slot:2, court:3},
+    {tie:2, category:"MS", slot:3, court:1}, {tie:2, category:"MD1", slot:3, court:2}, {tie:2, category:"MD2", slot:3, court:3},
+    // Slots 4-6 — Women's & Mixed (WS/WD/XD1/XD2), one tie per slot, all 4 courts
+    {tie:0, category:"WS", slot:4, court:1}, {tie:0, category:"WD", slot:4, court:2}, {tie:0, category:"XD1", slot:4, court:3}, {tie:0, category:"XD2", slot:4, court:4},
+    {tie:1, category:"WS", slot:5, court:1}, {tie:1, category:"WD", slot:5, court:2}, {tie:1, category:"XD1", slot:5, court:3}, {tie:1, category:"XD2", slot:5, court:4},
     {tie:2, category:"WS", slot:6, court:1}, {tie:2, category:"WD", slot:6, court:2}, {tie:2, category:"XD1", slot:6, court:3}, {tie:2, category:"XD2", slot:6, court:4},
   ];
-  // Estimated slot lengths — higher point totals (21 for MD/XD) mean longer matches than the
-  // original 11/15-point format, so these are wider blocks than before. Edit freely on the day.
+  // 6 slots × 20 min = exactly 2 hours, 5:00–7:00 PM. Edit freely if timings shift on the day.
   const SLOT_TIMES = {
-    1:"5:00 – 5:25 PM", 2:"5:25 – 5:55 PM",
-    3:"5:55 – 6:20 PM", 4:"6:20 – 6:50 PM",
-    5:"6:50 – 7:15 PM", 6:"7:15 – 7:45 PM"
+    1:"5:00 – 5:20 PM", 2:"5:20 – 5:40 PM", 3:"5:40 – 6:00 PM",
+    4:"6:00 – 6:20 PM", 5:"6:20 – 6:40 PM", 6:"6:40 – 7:00 PM"
   };
 
   // ---------- LIVE STATE (populated from cache first, then kept in sync by Firebase) ----------
@@ -677,7 +676,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     let html = "";
     [1,2,3,4,5,6].forEach(slotNum => {
       const slotMatches = R1_SCHEDULE.filter(s=>s.slot===slotNum).map(s=>findMatch("t"+s.tie+"-"+s.category));
-      const isMensSlot = slotNum % 2 === 1; // men's block uses only 3 of 4 courts
+      const isMensSlot = slotNum <= 3; // first hour: men's block, uses only 3 of 4 courts
       html += `
         <div class="slot-block">
           <div class="slot-title">
