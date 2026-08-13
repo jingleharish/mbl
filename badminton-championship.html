@@ -750,11 +750,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   // With only 3 teams, any 2 different ties always share a team, so a slot can only ever
   // hold matches from ONE tie at a time (plus the 4-court cap) without double-booking someone.
+  // Only the 4-court capacity is enforced here — moving a different tie's match into an
+  // occupied slot is allowed (the organizer manages any resulting team-availability clashes
+  // themselves rather than being blocked by the app).
   function canMoveMatchToSlot(match, targetSlot){
     const others = matches.filter(m => m.id !== match.id && m.slot === targetSlot);
     if(others.length >= MAX_PER_SLOT) return {ok:false, reason:"That slot already has "+MAX_PER_SLOT+" matches — all courts are full."};
-    const conflict = others.find(m => m.tie !== match.tie);
-    if(conflict) return {ok:false, reason:"That slot already has a different tie's match — moving here would double-book a team."};
     return {ok:true};
   }
   function nextFreeCourt(targetSlot, excludeMatchId){
