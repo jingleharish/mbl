@@ -150,6 +150,20 @@
   .match-card:hover{ box-shadow:0 6px 18px -8px rgba(11,79,74,0.35); transform:translateY(-1px); }
   .match-card:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
   .match-card.decided{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .match-card.ongoing{ animation: pulse-live 1.6s ease-in-out infinite; }
+  @keyframes pulse-live{
+    0%, 100% { box-shadow:0 0 0 2px rgba(214,69,69,0.65), 0 0 0px rgba(214,69,69,0); }
+    50% { box-shadow:0 0 0 2px rgba(214,69,69,0.65), 0 0 14px rgba(214,69,69,0.45); }
+  }
+  .live-tag{
+    font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--red); font-weight:700;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .live-dot{
+    width:7px; height:7px; border-radius:50%; background:var(--red); display:inline-block;
+    animation: pulse-dot 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot{ 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
   .match-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
   .court-badge{ display:flex; align-items:center; gap:8px; }
   .court-icon{ width:26px; height:16px; border-radius:2px; background:var(--court-mid); position:relative; flex:none;}
@@ -210,6 +224,13 @@
   .modal-close:hover{ color:var(--ink); background:var(--card-alt); }
   .modal-title{ font-size:23px; color:var(--court-deep); margin-top:4px; padding-right:24px;}
   .modal-meta{ font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .start-btn{
+    width:100%; margin-top:14px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+    padding:10px 14px; border-radius:8px; border:1px solid rgba(18,48,44,0.18); background:#fff;
+    color:var(--ink); cursor:pointer; transition:all .12s ease;
+  }
+  .start-btn:hover{ border-color:var(--red); }
+  .start-btn.active{ background:var(--red); color:#fff; border-color:var(--red); }
   .modal-side{ margin-top:16px; padding:14px 16px; background:var(--card-alt); border-radius:12px;}
   .modal-side.winner{ box-shadow:0 0 0 2px var(--amber) inset; }
   .modal-side h4{ font-size:17px; color:var(--court-deep); margin-bottom:8px;}
@@ -576,7 +597,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         tie: tieIdx, category: cat, round: ROUND_OF[cat],
         court: sched ? sched.court : null,
         slot: sched ? sched.slot : null,
-        winner: null, score: "", playerA: "", playerB: ""
+        winner: null, score: "", playerA: "", playerB: "", started: false
       });
     });
   });
@@ -594,6 +615,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
           m.score = sm.score || "";
           m.playerA = sm.playerA || "";
           m.playerB = sm.playerB || "";
+          m.started = !!sm.started;
           if(sm.slot != null) m.slot = sm.slot;
           if(sm.court != null) m.court = sm.court;
         }
@@ -663,10 +685,11 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const nameA = getTeamNameSafe(pair[0]);
     const nameB = getTeamNameSafe(pair[1]);
     const decided = m.winner !== null;
+    const ongoing = m.started && !decided;
     const playerAText = m.playerA ? esc(formatPlayerDisplay(m.playerA)) : esc(playerPlaceholder(m.category));
     const playerBText = m.playerB ? esc(formatPlayerDisplay(m.playerB)) : esc(playerPlaceholder(m.category));
     return `
-      <div class="match-card ${decided?'decided':''}" role="button" tabindex="0" data-match-id="${m.id}"
+      <div class="match-card ${decided?'decided':''} ${ongoing?'ongoing':''}" role="button" tabindex="0" data-match-id="${m.id}"
            onclick="window.__openMatch('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__openMatch('${m.id}')}">
         <div class="match-top">
           <div class="court-badge">
@@ -689,7 +712,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
           </div>
         </div>
         <div class="match-status-row">
-          ${decided ? `<span class="winner-tag">${m.winner===0?nameA:nameB} won</span>` : `<span class="tap-hint">Tap to enter result</span>`}
+          ${decided ? `<span class="winner-tag">${m.winner===0?nameA:nameB} won</span>` : ongoing ? `<span class="live-tag"><span class="live-dot"></span>Live</span>` : `<span class="tap-hint">Tap to enter result</span>`}
           ${m.score ? `<span class="score-pill">${esc(m.score)}</span>` : ""}
         </div>
       </div>
@@ -917,6 +940,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       <div class="eyebrow">Tie ${m.tie+1} · Court ${m.court} · ${SLOT_TIMES[m.slot]}</div>
       <h3 class="modal-title">${CAT_LABEL[m.category]}</h3>
       <div class="modal-meta">${esc(nameA)} vs ${esc(nameB)}</div>
+      <button class="start-btn ${m.started?'active':''}" onclick="window.__toggleStarted('${m.id}')">${m.started ? '● Match in progress — tap to reset' : '▶ Start match'}</button>
       ${matchSideModalHTML(m, 'A', pair[0], nameA)}
       ${matchSideModalHTML(m, 'B', pair[1], nameB)}
       <div class="modal-win-row">
@@ -947,7 +971,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   function pushMatchUpdate(m){
     saveCache();
-    update(ref(db, "matches/"+m.id), {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB, slot:m.slot, court:m.court})
+    update(ref(db, "matches/"+m.id), {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB, slot:m.slot, court:m.court, started:m.started})
       .catch(e => console.warn("Sync failed, will retry once reconnected:", e));
   }
 
@@ -1116,6 +1140,14 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   }
 
   // ---------- EVENT HANDLERS (exposed globally for inline onclick/oninput) ----------
+  window.__toggleStarted = function(id){
+    if(!ensureUnlocked()) return;
+    const m = findMatch(id);
+    m.started = !m.started;
+    pushMatchUpdate(m);
+    updateAll();
+    if(currentMatchId === id) renderMatchModal(m);
+  };
   window.__setWinner = function(id, val){
     if(!ensureUnlocked()) return;
     const m = findMatch(id);
@@ -1184,6 +1216,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       m.score = (sm && sm.score) || "";
       m.playerA = (sm && sm.playerA) || "";
       m.playerB = (sm && sm.playerB) || "";
+      m.started = !!(sm && sm.started);
       if(sm && sm.slot != null) m.slot = sm.slot;
       if(sm && sm.court != null) m.court = sm.court;
     });
