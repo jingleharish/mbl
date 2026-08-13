@@ -799,18 +799,64 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   });
 
   // ---------- STANDINGS COMPUTATION ----------
+  // Reads a freeform score field like "15-11" into [15, 11]. Relies on scores being entered
+  // as "own score - opponent score" (matching the input's own placeholder) — unparseable or
+  // missing scores just contribute 0 to the points-scored tiebreak below.
+  function parseScorePair(score){
+    if(!score) return null;
+    const m = String(score).match(/(\d+)\s*[-:–—]\s*(\d+)/);
+    if(!m) return null;
+    return [parseInt(m[1],10), parseInt(m[2],10)];
+  }
+
+  // Ranks teams by: points desc -> (2-team tie only) head-to-head -> category wins desc ->
+  // total points scored desc. Head-to-head only gives a consistent order for exactly 2 tied
+  // teams; with 3+ teams tied on points it can cycle (A beat B, B beat C, C beat A), which
+  // has no consistent "winner" — so for 3+-way ties it's skipped in favor of the aggregate
+  // tiebreakers instead of producing an arbitrary/inconsistent order.
+  function rankTeams(stats, tieResults){
+    const indices = TEAM_DEFAULTS.map((_,i)=>i);
+    const byPoints = {};
+    indices.forEach(i => { (byPoints[stats[i].points] = byPoints[stats[i].points] || []).push(i); });
+    const pointsDesc = Object.keys(byPoints).map(Number).sort((a,b)=>b-a);
+    const byAggregate = (x,y) => (stats[y].catWins-stats[x].catWins) || (stats[y].pointsScored-stats[x].pointsScored);
+    let result = [];
+    pointsDesc.forEach(p => {
+      const group = byPoints[p];
+      if(group.length === 1){
+        result.push(group[0]);
+      } else if(group.length === 2){
+        const [a,b] = group;
+        const tIdx = PAIRS.findIndex(pr => (pr[0]===a&&pr[1]===b)||(pr[0]===b&&pr[1]===a));
+        if(tIdx>-1 && tieResults[tIdx].decided){
+          const winner = tieResults[tIdx].winnerIdx;
+          result.push(winner, winner===a ? b : a);
+        } else {
+          result.push(...group.slice().sort(byAggregate));
+        }
+      } else {
+        result.push(...group.slice().sort(byAggregate));
+      }
+    });
+    return result;
+  }
+
   function computeStandings(){
-    const stats = TEAM_DEFAULTS.map(()=>({points:0, tiesWon:0, tiesLost:0, tiesPlayed:0, catWins:0}));
+    const stats = TEAM_DEFAULTS.map(()=>({points:0, tiesWon:0, tiesLost:0, tiesPlayed:0, catWins:0, pointsScored:0}));
     const tieResults = [];
     PAIRS.forEach((pair, tieIdx) => {
-      let aWins=0, bWins=0;
+      let aWins=0, bWins=0, aPts=0, bPts=0;
       CATS.forEach(cat => {
         const m = findMatch("t"+tieIdx+"-"+cat);
         if(m.winner===0) aWins++;
         else if(m.winner===1) bWins++;
+        const parsed = parseScorePair(m.score);
+        if(parsed){ aPts += parsed[0]; bPts += parsed[1]; }
       });
       stats[pair[0]].catWins += aWins;
       stats[pair[1]].catWins += bWins;
+      stats[pair[0]].pointsScored += aPts;
+      stats[pair[1]].pointsScored += bPts;
       const decided = aWins>=TIE_WIN_THRESHOLD || bWins>=TIE_WIN_THRESHOLD;
       const winnerIdx = aWins>=TIE_WIN_THRESHOLD ? pair[0] : (bWins>=TIE_WIN_THRESHOLD ? pair[1] : null);
       if(decided){
@@ -821,15 +867,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       tieResults.push({tieIdx, pair, aWins, bWins, decided, winnerIdx});
     });
 
-    const order = TEAM_DEFAULTS.map((_,i)=>i).sort((a,b)=>{
-      if(stats[a].points !== stats[b].points) return stats[b].points - stats[a].points;
-      const tIdx = PAIRS.findIndex(p => (p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a));
-      if(tIdx>-1 && tieResults[tIdx].decided){
-        if(tieResults[tIdx].winnerIdx===a) return -1;
-        if(tieResults[tIdx].winnerIdx===b) return 1;
-      }
-      return stats[b].catWins - stats[a].catWins;
-    });
+    const order = rankTeams(stats, tieResults);
 
     return {stats, tieResults, order};
   }
