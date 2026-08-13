@@ -225,6 +225,11 @@
     font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
     font-family:'JetBrains Mono',monospace; display:block; margin-bottom:6px;
   }
+  .modal-move{ margin-top:16px; padding-top:16px; border-top:1px dashed rgba(18,48,44,0.15); }
+  .modal-move label{
+    font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace; display:block; margin-bottom:6px;
+  }
   .modal-footer{ margin-top:20px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
 
   /* ---------- TIE PROGRESS (rounds 2/3) ---------- */
@@ -426,6 +431,10 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   // anyone with dev tools can still bypass this client-side-only check entirely.
   // To change the PIN: open a console, run simpleHash("your new pin"), paste the result below.
   const EDIT_PIN_HASH = "7c794d4f";
+  // Separate passcode specifically for moving a match to a different slot — always asked
+  // fresh (not remembered like the general edit unlock), since rescheduling is rarer and
+  // more consequential than routine score entry.
+  const MOVE_PIN_HASH = "7c794d50";
   function simpleHash(str){
     let h = 5381;
     for(let i=0; i<str.length; i++){ h = ((h << 5) + h) + str.charCodeAt(i); h = h >>> 0; }
@@ -571,6 +580,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
           m.score = sm.score || "";
           m.playerA = sm.playerA || "";
           m.playerB = sm.playerB || "";
+          if(sm.slot != null) m.slot = sm.slot;
+          if(sm.court != null) m.court = sm.court;
         }
       });
     }
@@ -671,18 +682,22 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     `;
   }
 
+  const SLOT_NUMBERS = [1,2,3,4,5,6];
+  const MAX_PER_SLOT = 4; // matches available courts
+
   function renderRound1(){
     const container = document.getElementById("round1-schedule");
     let html = "";
-    [1,2,3,4,5,6].forEach(slotNum => {
-      const slotMatches = R1_SCHEDULE.filter(s=>s.slot===slotNum).map(s=>findMatch("t"+s.tie+"-"+s.category));
-      const isMensSlot = slotNum <= 3; // first hour: men's block, uses only 3 of 4 courts
+    SLOT_NUMBERS.forEach(slotNum => {
+      // Slot/court are now live, movable data on each match (not a fixed lookup table) —
+      // matches can be dragged between slots via the "Move match" control in the modal.
+      const slotMatches = matches.filter(m => m.slot === slotNum).sort((a,b)=> (a.court||0)-(b.court||0));
       html += `
         <div class="slot-block">
           <div class="slot-title">
             <h3>Slot ${slotNum}</h3>
             <span class="slot-time" contenteditable="true">${SLOT_TIMES[slotNum]}</span>
-            ${isMensSlot ? `<span class="pending-tag">Men's · Court 4 free</span>` : `<span class="pending-tag">Women's &amp; Mixed</span>`}
+            <span class="pending-tag">${slotMatches.length}/${MAX_PER_SLOT} courts used</span>
           </div>
           <div class="court-grid">
             ${slotMatches.map(matchCardHTML).join("")}
@@ -733,6 +748,50 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     `;
   }
 
+  // With only 3 teams, any 2 different ties always share a team, so a slot can only ever
+  // hold matches from ONE tie at a time (plus the 4-court cap) without double-booking someone.
+  function canMoveMatchToSlot(match, targetSlot){
+    const others = matches.filter(m => m.id !== match.id && m.slot === targetSlot);
+    if(others.length >= MAX_PER_SLOT) return {ok:false, reason:"That slot already has "+MAX_PER_SLOT+" matches — all courts are full."};
+    const conflict = others.find(m => m.tie !== match.tie);
+    if(conflict) return {ok:false, reason:"That slot already has a different tie's match — moving here would double-book a team."};
+    return {ok:true};
+  }
+  function nextFreeCourt(targetSlot, excludeMatchId){
+    const used = matches.filter(m => m.id !== excludeMatchId && m.slot === targetSlot).map(m=>m.court);
+    for(let c=1; c<=MAX_PER_SLOT; c++){ if(!used.includes(c)) return c; }
+    return null;
+  }
+  function moveSectionHTML(m){
+    const options = SLOT_NUMBERS.map(sn => {
+      const count = matches.filter(mm => mm.slot===sn && mm.id!==m.id).length;
+      const current = sn===m.slot ? " · current" : "";
+      return `<option value="${sn}" ${sn===m.slot?'selected':''}>Slot ${sn} (${SLOT_TIMES[sn]}) — ${count}/${MAX_PER_SLOT} courts used${current}</option>`;
+    }).join("");
+    return `
+      <div class="modal-move">
+        <label for="move-slot-select">Move match to a different slot</label>
+        <select id="move-slot-select" class="player-select">${options}</select>
+        <button class="clear-btn" style="margin-top:8px;" onclick="window.__moveMatch('${m.id}', document.getElementById('move-slot-select').value)">Move match (needs passcode)</button>
+      </div>
+    `;
+  }
+  window.__moveMatch = function(id, targetSlotRaw){
+    const targetSlot = parseInt(targetSlotRaw, 10);
+    const m = findMatch(id);
+    if(targetSlot === m.slot) return;
+    const check = canMoveMatchToSlot(m, targetSlot);
+    if(!check.ok){ alert(check.reason); renderMatchModal(m); return; }
+    const pass = prompt("Enter the move passcode:");
+    if(pass === null){ renderMatchModal(m); return; }
+    if(simpleHash(pass) !== MOVE_PIN_HASH){ alert("Incorrect passcode."); renderMatchModal(m); return; }
+    m.slot = targetSlot;
+    m.court = nextFreeCourt(targetSlot, id);
+    pushMatchUpdate(m);
+    renderRound1();
+    renderMatchModal(m);
+  };
+
   function renderMatchModal(m){
     const panel = document.getElementById("match-modal-panel");
     if(!panel) return;
@@ -754,6 +813,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <label for="modal-score-input">Score</label>
         <input id="modal-score-input" class="score-input" placeholder="${scorePlaceholder(m.category)}" value="${esc(m.score)}" oninput="window.__setScore('${m.id}', this.value)">
       </div>
+      ${moveSectionHTML(m)}
       <div class="modal-footer">
         ${m.winner!==null ? `<button class="clear-btn" onclick="window.__setWinner('${m.id}',null)">Clear result</button>` : `<span></span>`}
         <button class="win-btn" style="flex:none; padding:9px 22px;" onclick="window.__closeMatch()">Done</button>
@@ -773,7 +833,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   function pushMatchUpdate(m){
     saveCache();
-    update(ref(db, "matches/"+m.id), {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB})
+    update(ref(db, "matches/"+m.id), {winner:m.winner, score:m.score, playerA:m.playerA, playerB:m.playerB, slot:m.slot, court:m.court})
       .catch(e => console.warn("Sync failed, will retry once reconnected:", e));
   }
 
@@ -1009,6 +1069,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       m.score = (sm && sm.score) || "";
       m.playerA = (sm && sm.playerA) || "";
       m.playerB = (sm && sm.playerB) || "";
+      if(sm && sm.slot != null) m.slot = sm.slot;
+      if(sm && sm.court != null) m.court = sm.court;
     });
     saveCache();
     setSyncStatus("live");
