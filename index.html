@@ -225,12 +225,26 @@
     font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
     font-family:'JetBrains Mono',monospace; display:block; margin-bottom:6px;
   }
-  .modal-move{ margin-top:16px; padding-top:16px; border-top:1px dashed rgba(18,48,44,0.15); }
-  .modal-move label{
-    font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
-    font-family:'JetBrains Mono',monospace; display:block; margin-bottom:6px;
+  .modal-move-hint{
+    margin-top:16px; padding-top:16px; border-top:1px dashed rgba(18,48,44,0.15);
+    font-size:12px; color:var(--ink-soft); font-style:italic;
   }
   .modal-footer{ margin-top:20px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+
+  /* ---------- DRAG & DROP (reschedule matches between slots) ---------- */
+  .match-card{ cursor:grab; }
+  .match-card.dragging{ opacity:0.35; }
+  .court-grid.drop-hover{ outline:2px dashed var(--amber); outline-offset:4px; border-radius:12px; background:rgba(201,123,61,0.06); }
+  .drag-ghost{
+    position:fixed; z-index:200; pointer-events:none; width:180px; padding:10px 12px;
+    background:#fff; border:2px solid var(--amber); border-radius:10px; box-shadow:0 12px 28px -8px rgba(0,0,0,0.4);
+    font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:600; color:var(--ink);
+    transform:translate(-50%,-50%); opacity:0.95;
+  }
+  .drag-ghost .dg-cat{
+    display:block; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.05em;
+    text-transform:uppercase; color:var(--amber); font-weight:600; margin-bottom:2px;
+  }
 
   /* ---------- TIE PROGRESS (rounds 2/3) ---------- */
   .tie-list{ margin-top:22px; }
@@ -652,7 +666,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const playerAText = m.playerA ? esc(formatPlayerDisplay(m.playerA)) : esc(playerPlaceholder(m.category));
     const playerBText = m.playerB ? esc(formatPlayerDisplay(m.playerB)) : esc(playerPlaceholder(m.category));
     return `
-      <div class="match-card ${decided?'decided':''}" role="button" tabindex="0"
+      <div class="match-card ${decided?'decided':''}" role="button" tabindex="0" data-match-id="${m.id}"
            onclick="window.__openMatch('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__openMatch('${m.id}')}">
         <div class="match-top">
           <div class="court-badge">
@@ -689,17 +703,17 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     const container = document.getElementById("round1-schedule");
     let html = "";
     SLOT_NUMBERS.forEach(slotNum => {
-      // Slot/court are now live, movable data on each match (not a fixed lookup table) —
-      // matches can be dragged between slots via the "Move match" control in the modal.
+      // Slot/court are live, movable data on each match (not a fixed lookup table) — drag
+      // any match card into a different slot's court-grid to reschedule it (passcode-gated).
       const slotMatches = matches.filter(m => m.slot === slotNum).sort((a,b)=> (a.court||0)-(b.court||0));
       html += `
-        <div class="slot-block">
+        <div class="slot-block" data-slot="${slotNum}">
           <div class="slot-title">
             <h3>Slot ${slotNum}</h3>
             <span class="slot-time" contenteditable="true">${SLOT_TIMES[slotNum]}</span>
             <span class="pending-tag">${slotMatches.length}/${MAX_PER_SLOT} courts used</span>
           </div>
-          <div class="court-grid">
+          <div class="court-grid" data-slot="${slotNum}">
             ${slotMatches.map(matchCardHTML).join("")}
           </div>
         </div>
@@ -748,11 +762,9 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     `;
   }
 
-  // With only 3 teams, any 2 different ties always share a team, so a slot can only ever
-  // hold matches from ONE tie at a time (plus the 4-court cap) without double-booking someone.
   // Only the 4-court capacity is enforced here — moving a different tie's match into an
-  // occupied slot is allowed (the organizer manages any resulting team-availability clashes
-  // themselves rather than being blocked by the app).
+  // occupied slot is allowed (different players cover different categories, so the organizer
+  // manages any resulting team-availability clashes themselves rather than being blocked).
   function canMoveMatchToSlot(match, targetSlot){
     const others = matches.filter(m => m.id !== match.id && m.slot === targetSlot);
     if(others.length >= MAX_PER_SLOT) return {ok:false, reason:"That slot already has "+MAX_PER_SLOT+" matches — all courts are full."};
@@ -763,34 +775,115 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     for(let c=1; c<=MAX_PER_SLOT; c++){ if(!used.includes(c)) return c; }
     return null;
   }
-  function moveSectionHTML(m){
-    const options = SLOT_NUMBERS.map(sn => {
-      const count = matches.filter(mm => mm.slot===sn && mm.id!==m.id).length;
-      const current = sn===m.slot ? " · current" : "";
-      return `<option value="${sn}" ${sn===m.slot?'selected':''}>Slot ${sn} (${SLOT_TIMES[sn]}) — ${count}/${MAX_PER_SLOT} courts used${current}</option>`;
-    }).join("");
-    return `
-      <div class="modal-move">
-        <label for="move-slot-select">Move match to a different slot (asks for a passcode)</label>
-        <select id="move-slot-select" class="player-select" onchange="window.__moveMatch('${m.id}', this.value)">${options}</select>
-      </div>
-    `;
-  }
-  window.__moveMatch = function(id, targetSlotRaw){
-    const targetSlot = parseInt(targetSlotRaw, 10);
+  // Drag a match card into a different slot's court-grid to reschedule it (see drag-and-drop
+  // controller further down). Always asks for the move passcode fresh — never remembered.
+  window.__moveMatch = function(id, targetSlot){
     const m = findMatch(id);
     if(targetSlot === m.slot) return;
     const check = canMoveMatchToSlot(m, targetSlot);
-    if(!check.ok){ alert(check.reason); renderMatchModal(m); return; }
+    if(!check.ok){ alert(check.reason); return; }
     const pass = prompt("Enter the move passcode:");
-    if(pass === null){ renderMatchModal(m); return; }
-    if(simpleHash(pass) !== MOVE_PIN_HASH){ alert("Incorrect passcode."); renderMatchModal(m); return; }
+    if(pass === null) return;
+    if(simpleHash(pass) !== MOVE_PIN_HASH){ alert("Incorrect passcode."); return; }
     m.slot = targetSlot;
     m.court = nextFreeCourt(targetSlot, id);
     pushMatchUpdate(m);
     renderRound1();
-    renderMatchModal(m);
+    if(currentMatchId === id) renderMatchModal(m);
   };
+
+  // ---------- DRAG & DROP (reschedule matches between slots) ----------
+  // Built on Pointer Events (not the HTML5 drag-and-drop API) so it works the same for mouse
+  // and touch — referees mostly use this on phones, and native HTML5 DnD doesn't support touch.
+  let dragCtx = null;
+  let dragGhostEl = null;
+  let dropHoverEl = null;
+  let justDragged = false;
+
+  function onDragPointerDown(e){
+    if(e.pointerType === "mouse" && e.button !== 0) return;
+    const card = e.target.closest(".match-card");
+    if(!card) return;
+    dragCtx = {matchId: card.getAttribute("data-match-id"), pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false, cardEl: card};
+  }
+
+  function startVisualDrag(ctx){
+    ctx.cardEl.classList.add("dragging");
+    const m = findMatch(ctx.matchId);
+    const pair = PAIRS[m.tie];
+    dragGhostEl = document.createElement("div");
+    dragGhostEl.className = "drag-ghost";
+    dragGhostEl.innerHTML = `<span class="dg-cat">${CAT_LABEL[m.category]}</span>${getTeamNameSafe(pair[0])} vs ${getTeamNameSafe(pair[1])}`;
+    document.body.appendChild(dragGhostEl);
+  }
+
+  function positionGhost(x, y){
+    if(dragGhostEl){ dragGhostEl.style.left = x+"px"; dragGhostEl.style.top = (y-40)+"px"; }
+  }
+
+  function elementUnderGhost(x, y){
+    if(dragGhostEl) dragGhostEl.style.display = "none";
+    const el = document.elementFromPoint(x, y);
+    if(dragGhostEl) dragGhostEl.style.display = "";
+    return el;
+  }
+
+  function highlightDropTarget(x, y){
+    const slotGrid = elementUnderGhost(x, y)?.closest(".court-grid") || null;
+    if(dropHoverEl && dropHoverEl !== slotGrid) dropHoverEl.classList.remove("drop-hover");
+    if(slotGrid) slotGrid.classList.add("drop-hover");
+    dropHoverEl = slotGrid;
+  }
+
+  function finishDrag(x, y){
+    const slotGrid = elementUnderGhost(x, y)?.closest(".court-grid") || null;
+    if(slotGrid){
+      const targetSlot = parseInt(slotGrid.getAttribute("data-slot"), 10);
+      window.__moveMatch(dragCtx.matchId, targetSlot);
+    }
+  }
+
+  function cleanupDrag(){
+    if(dragCtx && dragCtx.cardEl) dragCtx.cardEl.classList.remove("dragging");
+    if(dragGhostEl){ dragGhostEl.remove(); dragGhostEl = null; }
+    if(dropHoverEl){ dropHoverEl.classList.remove("drop-hover"); dropHoverEl = null; }
+    dragCtx = null;
+  }
+
+  document.addEventListener("pointermove", (e) => {
+    if(!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    const dx = e.clientX - dragCtx.startX, dy = e.clientY - dragCtx.startY;
+    if(!dragCtx.moved && Math.hypot(dx, dy) > 12){
+      dragCtx.moved = true;
+      startVisualDrag(dragCtx);
+    }
+    if(dragCtx.moved){
+      e.preventDefault();
+      positionGhost(e.clientX, e.clientY);
+      highlightDropTarget(e.clientX, e.clientY);
+    }
+  });
+  document.addEventListener("pointerup", (e) => {
+    if(!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    if(dragCtx.moved){
+      finishDrag(e.clientX, e.clientY);
+      justDragged = true;
+      // Safety net: the browser fires a synthetic 'click' right after a real drag gesture,
+      // which is what actually clears this flag — but if that click never arrives for any
+      // reason (e.g. a cancelled touch), don't let it get stuck true forever.
+      setTimeout(() => { justDragged = false; }, 400);
+    }
+    cleanupDrag();
+  });
+  document.addEventListener("pointercancel", (e) => {
+    if(!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    cleanupDrag();
+  });
+  // Swallow the synthetic click that follows a real drag, so dropping a card doesn't also
+  // pop the match-status modal open right after.
+  document.addEventListener("click", (e) => {
+    if(justDragged){ e.preventDefault(); e.stopPropagation(); justDragged = false; }
+  }, true);
 
   function renderMatchModal(m){
     const panel = document.getElementById("match-modal-panel");
@@ -813,7 +906,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <label for="modal-score-input">Score</label>
         <input id="modal-score-input" class="score-input" placeholder="${scorePlaceholder(m.category)}" value="${esc(m.score)}" oninput="window.__setScore('${m.id}', this.value)">
       </div>
-      ${moveSectionHTML(m)}
+      <p class="modal-move-hint">To reschedule this match, close this panel and drag its card into a different slot.</p>
       <div class="modal-footer">
         ${m.winner!==null ? `<button class="clear-btn" onclick="window.__setWinner('${m.id}',null)">Clear result</button>` : `<span></span>`}
         <button class="win-btn" style="flex:none; padding:9px 22px;" onclick="window.__closeMatch()">Done</button>
@@ -1041,6 +1134,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   // Initial paint from cache, then wire up live Firebase sync.
   updateLockBadge();
   updateAll();
+  document.getElementById("round1-schedule").addEventListener("pointerdown", onDragPointerDown);
 
   onValue(ref(db, "teams"), snap => {
     const val = snap.val();
