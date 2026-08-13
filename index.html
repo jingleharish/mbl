@@ -723,6 +723,23 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   }
 
   // ---------- MATCH STATUS MODAL (referee view) ----------
+  // Every player this team already has assigned to ANY match in this slot (across all
+  // categories) — a player can't be on two courts in the same time slot.
+  function busyPlayersForTeamInSlot(teamIdx, slot){
+    const busy = new Set();
+    matches.forEach(mm => {
+      if(mm.slot !== slot) return;
+      const pair = PAIRS[mm.tie];
+      if(pair[0] === teamIdx && mm.playerA){
+        mm.playerA.split(" & ").forEach(n => { if(n) busy.add(n); });
+      }
+      if(pair[1] === teamIdx && mm.playerB){
+        mm.playerB.split(" & ").forEach(n => { if(n) busy.add(n); });
+      }
+    });
+    return busy;
+  }
+
   function playerSelectHTML(m, side, slotIdx, teamIdx){
     const roster = rosterFor(teamIdx);
     const reqGender = requiredGender(m.category, slotIdx);
@@ -739,9 +756,13 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       list = existing ? [existing, ...list] : [{name: selected, gender: ""}, ...list];
     }
 
+    const busy = busyPlayersForTeamInSlot(teamIdx, m.slot);
     const placeholderLabel = reqGender==="M" ? "— Select men's player —" : reqGender==="F" ? "— Select women's player —" : "— Select player —";
     const opts = [`<option value="">${placeholderLabel}</option>`]
-      .concat(list.map(p => `<option value="${esc(p.name)}" ${p.name===selected?'selected':''}>${esc(p.name)}${p.gender?` (${p.gender})`:''}</option>`));
+      .concat(list.map(p => {
+        const isBusy = busy.has(p.name) && p.name !== selected;
+        return `<option value="${esc(p.name)}" ${p.name===selected?'selected':''} ${isBusy?'disabled':''}>${esc(p.name)}${p.gender?` (${p.gender})`:''}${isBusy?' — busy this slot':''}</option>`;
+      }));
     if(list.length === 0){
       return `<select class="player-select" onchange="window.__setPlayerSlot('${m.id}','${side}',${slotIdx},this.value)"><option value="">${reqGender==="M"?"No men tagged in roster yet":reqGender==="F"?"No women tagged in roster yet":"No players"}</option></select>`;
     }
