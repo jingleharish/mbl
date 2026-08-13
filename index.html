@@ -311,17 +311,17 @@
 
   <!-- HERO -->
   <header class="hero">
-    <div class="eyebrow">Round Robin · 4 Teams · 5 Categories</div>
+    <div class="eyebrow">Round Robin · 3 Teams · 7 Categories</div>
     <h1>Meridian Badminton League</h1>
-    <p class="sub">Every team faces every other team once — a "tie" — across five category matches. Win three of the five categories and you win the tie. Most tie-wins after all six ties takes the trophy.</p>
+    <p class="sub">Every team faces every other team once — a "tie" — across seven category matches. Win four of the seven categories and you win the tie. Most tie-wins after all three ties takes the trophy.</p>
     <div class="event-meta">
       <span>📍 Play Arena, Sarjapur</span>
       <span>📅 14th August 2026</span>
     </div>
     <div class="stat-strip">
-      <div class="stat"><div class="n">04</div><div class="l">Teams</div></div>
-      <div class="stat"><div class="n">06</div><div class="l">Ties</div></div>
-      <div class="stat"><div class="n">30</div><div class="l">Total matches</div></div>
+      <div class="stat"><div class="n">03</div><div class="l">Teams</div></div>
+      <div class="stat"><div class="n">03</div><div class="l">Ties</div></div>
+      <div class="stat"><div class="n">21</div><div class="l">Total matches</div></div>
       <div class="stat"><div class="n">04</div><div class="l">Courts booked</div></div>
     </div>
   </header>
@@ -339,11 +339,11 @@
     <div class="format-grid">
       <div class="fbox">
         <h4>The Tie</h4>
-        <p>Each of the 6 team-vs-team ties is contested across all 5 categories. First team to 3 category wins takes the tie. Remaining categories can still be played for the record, but the tie is already decided.</p>
+        <p>Each of the 3 team-vs-team ties is contested across all 7 categories. First team to 4 category wins takes the tie. Remaining categories can still be played for the record, but the tie is already decided.</p>
       </div>
       <div class="fbox">
         <h4>Each Match</h4>
-        <p>Single set decides the match — no best-of-3. Rally-point scoring: <b>Singles (MS/WS) to 11 points</b>, <b>Doubles (MD/WD/XD) to 15 points</b>.</p>
+        <p>Single set decides the match — no best-of-3. Rally-point scoring: <b>MS to 15</b>, <b>WS to 11</b>, <b>WD to 15</b>, <b>MD &amp; XD to 21 points</b>.</p>
       </div>
       <div class="fbox">
         <h4>League Table</h4>
@@ -352,20 +352,22 @@
     </div>
     <div class="cat-row">
       <span class="cat-pill">MS · Men's Singles</span>
-      <span class="cat-pill">MD · Men's Doubles</span>
+      <span class="cat-pill">MD1 · Men's Doubles 1</span>
+      <span class="cat-pill">MD2 · Men's Doubles 2</span>
       <span class="cat-pill">WS · Women's Singles</span>
       <span class="cat-pill">WD · Women's Doubles</span>
-      <span class="cat-pill">XD · Mixed Doubles</span>
+      <span class="cat-pill">XD1 · Mixed Doubles 1</span>
+      <span class="cat-pill">XD2 · Mixed Doubles 2</span>
     </div>
-    <div class="note"><b>Squad note:</b> each tie needs 8 player-slots (1 MS + 2 MD + 1 WS + 2 WD + 2 XD, one man one woman). With a 12-player squad, aim for roughly an even men/women split so you can rotate across ties without over-playing anyone.</div>
+    <div class="note"><b>Squad note:</b> each tie needs 12 player-slots — 1 MS, 2× MD (4 men), 1 WS, 1× WD (2 women), 2× XD (2 men + 2 women). With a 12-player squad split evenly by gender, that's every player turning out once per tie.</div>
   </section>
 
   <!-- FULL SCHEDULE -->
   <section class="card">
     <div class="card-head">
-      <div class="eyebrow">14th August 2026 · 5:00 – 7:00 PM · Play Arena, Sarjapur</div>
+      <div class="eyebrow">14th August 2026 · 5:00 – 7:45 PM (est.) · Play Arena, Sarjapur</div>
       <h2>Full League — Court Schedule</h2>
-      <p>All 30 matches, all 5 categories, fit inside the 2-hour booking, all 4 courts busy throughout. Men's Singles &amp; Doubles run first — slots 1–3 — followed by Women's Singles &amp; Doubles in slots 4–6 (5:00–6:30 total). Mixed Doubles closes it out from 6:30–7:00: with only 4 teams, at most 2 XD ties can run at once without a team playing itself, so it's three 10-minute slots on courts 1–2 (courts 3–4 sit free those rounds). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere, and every tie could be fully decided by 7:00 PM. Slot times are editable if timings shift on the day.</p>
+      <p>All 21 matches, all 7 categories, across the 3 ties. With only 3 teams, ties run one at a time rather than in parallel — each tie gets two back-to-back slots: its 3 men's matches (MS, MD1, MD2 — courts 1–3) followed by its 4 women's &amp; mixed matches (WS, WD, XD1, XD2 — all 4 courts). Tap a match card to open its status panel and record a result — the league table below updates instantly everywhere. Slot times are estimates based on the higher point totals (up to 21) and are fully editable if timings shift on the day.</p>
     </div>
     <div id="round1-schedule"></div>
   </section>
@@ -387,7 +389,7 @@
     </div>
 
     <h3 class="sub-table-title">Tie-by-tie progress</h3>
-    <p class="sub-table-note">Each tie is decided at 3 category wins (best of 5). "In progress" ties still need more category matches played.</p>
+    <p class="sub-table-note">Each tie is decided at 4 category wins (best of 7). "In progress" ties still need more category matches played.</p>
     <div id="tie-progress"></div>
   </section>
 
@@ -432,11 +434,17 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   const UNLOCK_KEY = "bmlEditUnlocked_v1";
   const CACHE_KEY = "badmintonChampionship_v1";
 
-  const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
-  const PAIRS = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]; // 6 ties
-  const CATS = ["MS","MD","WS","WD","XD"];
-  const CAT_LABEL = {MS:"Men's Singles", MD:"Men's Doubles", WS:"Women's Singles", WD:"Women's Doubles", XD:"Mixed Doubles"};
-  const ROUND_OF = {MS:1, MD:1, WS:1, WD:1, XD:1};
+  const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors"];
+  const PAIRS = [[0,1],[0,2],[1,2]]; // 3 ties (round robin, 3 teams)
+  const CATS = ["MS","MD1","MD2","WS","WD","XD1","XD2"];
+  const CAT_LABEL = {
+    MS:"Men's Singles", MD1:"Men's Doubles 1", MD2:"Men's Doubles 2",
+    WS:"Women's Singles", WD:"Women's Doubles",
+    XD1:"Mixed Doubles 1", XD2:"Mixed Doubles 2"
+  };
+  const CAT_POINTS = {MS:15, MD1:21, MD2:21, WS:11, WD:15, XD1:21, XD2:21};
+  const TIE_WIN_THRESHOLD = 4; // first to 4 of 7 categories wins the tie
+  const ROUND_OF = {MS:1, MD1:1, MD2:1, WS:1, WD:1, XD1:1, XD2:1};
 
   function esc(s){
     const d = document.createElement("div");
@@ -508,43 +516,33 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     return !!(el && document.activeElement && el.contains(document.activeElement));
   }
 
-  // Round-1 court/slot assignment: each round-robin pairing (2 ties, all 4 teams) gets two
-  // 15-min slots back to back — one for MS+MD, one for WS+WD — on the same courts throughout.
+  // With only 3 teams, at most 2 can share the court area at any moment before a team
+  // would need to be in two ties simultaneously — so ties run one at a time, in full, using
+  // as many of the 4 courts as each ties's category block needs. Each tie gets 2 back-to-back
+  // slots: the 3 men's matches (MS/MD1/MD2, courts 1-3) then the 4 women's+mixed matches
+  // (WS/WD/XD1/XD2, all 4 courts).
   const R1_SCHEDULE = [
-    // Slots 1-3: ALL men's matches first (MS+MD together, all 4 courts busy every slot —
-    // combining categories per pairing already saturates the courts, so there's no idle
-    // court time within the men's block).
-    // Slot 1 — Pairing 1: Tie1 (T1vT2) on courts 1-2, Tie6 (T3vT4) on courts 3-4
-    {tie:0, category:"MS", slot:1, court:1}, {tie:0, category:"MD", slot:1, court:2},
-    {tie:5, category:"MS", slot:1, court:3}, {tie:5, category:"MD", slot:1, court:4},
-    // Slot 2 — Pairing 2: Tie2 (T1vT3) on courts 1-2, Tie5 (T2vT4) on courts 3-4
-    {tie:1, category:"MS", slot:2, court:1}, {tie:1, category:"MD", slot:2, court:2},
-    {tie:4, category:"MS", slot:2, court:3}, {tie:4, category:"MD", slot:2, court:4},
-    // Slot 3 — Pairing 3: Tie3 (T1vT4) on courts 1-2, Tie4 (T2vT3) on courts 3-4
-    {tie:2, category:"MS", slot:3, court:1}, {tie:2, category:"MD", slot:3, court:2},
-    {tie:3, category:"MS", slot:3, court:3}, {tie:3, category:"MD", slot:3, court:4},
-    // Slots 4-6: all women's matches (WS+WD), same pairing/court pattern as the men's block.
-    {tie:0, category:"WS", slot:4, court:1}, {tie:0, category:"WD", slot:4, court:2},
-    {tie:5, category:"WS", slot:4, court:3}, {tie:5, category:"WD", slot:4, court:4},
-    {tie:1, category:"WS", slot:5, court:1}, {tie:1, category:"WD", slot:5, court:2},
-    {tie:4, category:"WS", slot:5, court:3}, {tie:4, category:"WD", slot:5, court:4},
-    {tie:2, category:"WS", slot:6, court:1}, {tie:2, category:"WD", slot:6, court:2},
-    {tie:3, category:"WS", slot:6, court:3}, {tie:3, category:"WD", slot:6, court:4},
-    // Mixed Doubles: only 4 teams exist, so at most 2 ties can run at once without a team
-    // playing twice simultaneously — same 3 pairings, one match per court, courts 3-4 free.
-    {tie:0, category:"XD", slot:7, court:1}, {tie:5, category:"XD", slot:7, court:2},
-    {tie:1, category:"XD", slot:8, court:1}, {tie:4, category:"XD", slot:8, court:2},
-    {tie:2, category:"XD", slot:9, court:1}, {tie:3, category:"XD", slot:9, court:2},
+    // Tie 1: Team A vs Team B
+    {tie:0, category:"MS", slot:1, court:1}, {tie:0, category:"MD1", slot:1, court:2}, {tie:0, category:"MD2", slot:1, court:3},
+    {tie:0, category:"WS", slot:2, court:1}, {tie:0, category:"WD", slot:2, court:2}, {tie:0, category:"XD1", slot:2, court:3}, {tie:0, category:"XD2", slot:2, court:4},
+    // Tie 2: Team A vs Team C
+    {tie:1, category:"MS", slot:3, court:1}, {tie:1, category:"MD1", slot:3, court:2}, {tie:1, category:"MD2", slot:3, court:3},
+    {tie:1, category:"WS", slot:4, court:1}, {tie:1, category:"WD", slot:4, court:2}, {tie:1, category:"XD1", slot:4, court:3}, {tie:1, category:"XD2", slot:4, court:4},
+    // Tie 3: Team B vs Team C
+    {tie:2, category:"MS", slot:5, court:1}, {tie:2, category:"MD1", slot:5, court:2}, {tie:2, category:"MD2", slot:5, court:3},
+    {tie:2, category:"WS", slot:6, court:1}, {tie:2, category:"WD", slot:6, court:2}, {tie:2, category:"XD1", slot:6, court:3}, {tie:2, category:"XD2", slot:6, court:4},
   ];
+  // Estimated slot lengths — higher point totals (21 for MD/XD) mean longer matches than the
+  // original 11/15-point format, so these are wider blocks than before. Edit freely on the day.
   const SLOT_TIMES = {
-    1:"5:00 – 5:15 PM", 2:"5:15 – 5:30 PM", 3:"5:30 – 5:45 PM",
-    4:"5:45 – 6:00 PM", 5:"6:00 – 6:15 PM", 6:"6:15 – 6:30 PM",
-    7:"6:30 – 6:40 PM", 8:"6:40 – 6:50 PM", 9:"6:50 – 7:00 PM"
+    1:"5:00 – 5:25 PM", 2:"5:25 – 5:55 PM",
+    3:"5:55 – 6:20 PM", 4:"6:20 – 6:50 PM",
+    5:"6:50 – 7:15 PM", 6:"7:15 – 7:45 PM"
   };
 
   // ---------- LIVE STATE (populated from cache first, then kept in sync by Firebase) ----------
   let teamsState = TEAM_DEFAULTS.slice();
-  let playersState = [[],[],[],[]];
+  let playersState = TEAM_DEFAULTS.map(()=>[]);
 
   // Build full 30-match list
   const matches = [];
@@ -565,7 +563,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   const CACHED = loadCache();
   if(CACHED){
     if(CACHED.teams) teamsState = TEAM_DEFAULTS.map((d,i)=> CACHED.teams[i] || d);
-    if(CACHED.players) playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
+    if(CACHED.players) playersState = TEAM_DEFAULTS.map((_,i)=> CACHED.players[i] || []);
     if(CACHED.matches){
       matches.forEach(m => {
         const sm = CACHED.matches[m.id];
@@ -611,18 +609,19 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   let currentMatchId = null;
 
-  function isDoublesCategory(category){ return category==="MD" || category==="WD" || category==="XD"; }
+  function isDoublesCategory(category){ return category!=="MS" && category!=="WS"; }
 
   // MS/MD are men's, WS/WD are women's, XD needs one of each — slot 0 = men, slot 1 = women.
   function requiredGender(category, slotIdx){
-    if(category==="MS" || category==="MD") return "M";
+    if(category==="MS" || category==="MD1" || category==="MD2") return "M";
     if(category==="WS" || category==="WD") return "F";
-    if(category==="XD") return slotIdx===0 ? "M" : "F";
+    if(category==="XD1" || category==="XD2") return slotIdx===0 ? "M" : "F";
     return null;
   }
 
   function scorePlaceholder(category){
-    return (category==="MS" || category==="WS") ? "Score e.g. 11-7" : "Score e.g. 15-12";
+    const p = CAT_POINTS[category] || 21;
+    return "Score e.g. "+p+"-"+Math.max(0, p-4);
   }
 
   function playerPlaceholder(category){
@@ -676,15 +675,15 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   function renderRound1(){
     const container = document.getElementById("round1-schedule");
     let html = "";
-    [1,2,3,4,5,6,7,8,9].forEach(slotNum => {
+    [1,2,3,4,5,6].forEach(slotNum => {
       const slotMatches = R1_SCHEDULE.filter(s=>s.slot===slotNum).map(s=>findMatch("t"+s.tie+"-"+s.category));
-      const isXdSlot = slotNum >= 7;
+      const isMensSlot = slotNum % 2 === 1; // men's block uses only 3 of 4 courts
       html += `
         <div class="slot-block">
           <div class="slot-title">
             <h3>Slot ${slotNum}</h3>
             <span class="slot-time" contenteditable="true">${SLOT_TIMES[slotNum]}</span>
-            ${isXdSlot ? `<span class="pending-tag">Mixed Doubles · Courts 3 &amp; 4 free</span>` : ""}
+            ${isMensSlot ? `<span class="pending-tag">Men's · Court 4 free</span>` : `<span class="pending-tag">Women's &amp; Mixed</span>`}
           </div>
           <div class="court-grid">
             ${slotMatches.map(matchCardHTML).join("")}
@@ -812,8 +811,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       });
       stats[pair[0]].catWins += aWins;
       stats[pair[1]].catWins += bWins;
-      const decided = aWins>=3 || bWins>=3;
-      const winnerIdx = aWins>=3 ? pair[0] : (bWins>=3 ? pair[1] : null);
+      const decided = aWins>=TIE_WIN_THRESHOLD || bWins>=TIE_WIN_THRESHOLD;
+      const winnerIdx = aWins>=TIE_WIN_THRESHOLD ? pair[0] : (bWins>=TIE_WIN_THRESHOLD ? pair[1] : null);
       if(decided){
         stats[pair[0]].tiesPlayed++; stats[pair[1]].tiesPlayed++;
         if(winnerIdx===pair[0]){ stats[pair[0]].tiesWon++; stats[pair[1]].tiesLost++; stats[pair[0]].points+=2; }
@@ -822,7 +821,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
       tieResults.push({tieIdx, pair, aWins, bWins, decided, winnerIdx});
     });
 
-    const order = [0,1,2,3].sort((a,b)=>{
+    const order = TEAM_DEFAULTS.map((_,i)=>i).sort((a,b)=>{
       if(stats[a].points !== stats[b].points) return stats[b].points - stats[a].points;
       const tIdx = PAIRS.findIndex(p => (p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a));
       if(tIdx>-1 && tieResults[tIdx].decided){
@@ -871,9 +870,9 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <div class="status-banner">
           ${trophySVG()}
           <div class="txt">
-            <div class="eyebrow">In progress · ${decidedCount} of 6 ties decided</div>
+            <div class="eyebrow">In progress · ${decidedCount} of ${tieResults.length} ties decided</div>
             <h3>Current leader: ${getTeamNameSafe(leaderIdx)}</h3>
-            <p>Record results above as matches are played — all 30 matches are scheduled for today, so this could resolve by 7:00 PM</p>
+            <p>Record results above as matches are played — all 21 matches are scheduled for today, so this could resolve as the ties finish up</p>
           </div>
         </div>`;
     }
@@ -956,7 +955,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   onValue(ref(db, "players"), snap => {
     const val = snap.val();
-    playersState = [0,1,2,3].map(i=>{
+    playersState = TEAM_DEFAULTS.map((_,i)=>{
       const teamVal = val && val[i];
       const size = rosterSizeFromRemote(teamVal);
       return Array.from({length:size}, (_,p)=> (teamVal && teamVal[p]) || "");

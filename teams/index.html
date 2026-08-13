@@ -113,7 +113,7 @@
   .note b{color:var(--ink);}
 
   /* ---------- TEAMS ---------- */
-  .team-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:18px;}
+  .team-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:18px;}
   .team-card{ background:var(--card-alt); border-radius:12px; padding:18px; border-top:4px solid var(--court-mid);}
   .team-card[data-idx="0"]{border-top-color:#146B63;}
   .team-card[data-idx="1"]{border-top-color:#C97B3D;}
@@ -273,7 +273,7 @@
 
   <!-- HERO -->
   <header class="hero">
-    <div class="eyebrow">Round Robin · 4 Teams · 5 Categories</div>
+    <div class="eyebrow">Round Robin · 3 Teams · 7 Categories</div>
     <h1>Teams &amp; Squads</h1>
     <p class="sub">Click any team name to rename it, or tap a player slot to edit the roster. Mark player gender in brackets if useful for planning MS/WS/mixed pairings. Changes sync live to every device — including the schedule page.</p>
     <div class="event-meta">
@@ -329,7 +329,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   const UNLOCK_KEY = "bmlEditUnlocked_v1";
   const CACHE_KEY = "badmintonChampionship_v1";
 
-  const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors","Drop Shot Dynamos"];
+  const TEAM_DEFAULTS = ["Smash Squad","Net Ninjas","Rally Raptors"];
 
   function esc(s){
     const d = document.createElement("div");
@@ -423,8 +423,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   // ---------- LIVE STATE ----------
   let teamsState = TEAM_DEFAULTS.slice();
-  let playersState = [[],[],[],[]];
-  let rosterSize = [BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, BASE_ROSTER_SIZE];
+  let playersState = TEAM_DEFAULTS.map(()=>[]);
+  let rosterSize = TEAM_DEFAULTS.map(()=>BASE_ROSTER_SIZE);
 
   function growRosterSize(i, dataLength){
     rosterSize[i] = Math.max(rosterSize[i] || BASE_ROSTER_SIZE, BASE_ROSTER_SIZE, dataLength || 0);
@@ -434,8 +434,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   if(CACHED){
     if(CACHED.teams) teamsState = TEAM_DEFAULTS.map((d,i)=> CACHED.teams[i] || d);
     if(CACHED.players){
-      playersState = [0,1,2,3].map(i=> CACHED.players[i] || []);
-      [0,1,2,3].forEach(i => growRosterSize(i, playersState[i].length));
+      playersState = TEAM_DEFAULTS.map((_,i)=> CACHED.players[i] || []);
+      TEAM_DEFAULTS.forEach((_,i) => growRosterSize(i, playersState[i].length));
     }
   }
 
@@ -527,12 +527,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
 
   onValue(ref(db, "players"), snap => {
     const val = snap.val();
-    playersState = [0,1,2,3].map(i=>{
+    playersState = TEAM_DEFAULTS.map((_,i)=>{
       const teamVal = val && val[i];
       const size = rosterSizeFromRemote(teamVal);
       return Array.from({length:size}, (_,p)=> (teamVal && teamVal[p]) || "");
     });
-    [0,1,2,3].forEach(i => growRosterSize(i, playersState[i].length));
+    TEAM_DEFAULTS.forEach((_,i) => growRosterSize(i, playersState[i].length));
     saveCache();
     setSyncStatus("live");
     if(!isEditingTeamGrid()) renderTeams();
