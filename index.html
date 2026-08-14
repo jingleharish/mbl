@@ -427,12 +427,12 @@
     <div class="card-head">
       <div class="eyebrow">Live table</div>
       <h2>Standings, Winner & Runner-up</h2>
-      <p>Updates automatically as match results are recorded above.</p>
+      <p>Updates automatically as match results are recorded above. Sorted by Points — Category Wins and Points Scored (right) are the tiebreakers when teams are level.</p>
     </div>
     <div class="table-scroll">
       <table id="standings-table">
         <thead>
-          <tr><th>Rank</th><th>Team</th><th class="num">Ties Played</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Category Wins</th><th class="num">Points</th></tr>
+          <tr><th>Rank</th><th>Team</th><th class="num">Ties Played</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Category Wins</th><th class="num">Points Scored</th><th class="num">Points</th></tr>
         </thead>
         <tbody id="standings-body"></tbody>
       </table>
@@ -1120,6 +1120,7 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <td class="num">${stats[idx].tiesWon}</td>
         <td class="num">${stats[idx].tiesLost}</td>
         <td class="num">${stats[idx].catWins}</td>
+        <td class="num">${stats[idx].pointsScored}</td>
         <td class="num">${stats[idx].points}</td>
       </tr>
     `).join("");
