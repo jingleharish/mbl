@@ -149,7 +149,14 @@
   }
   .match-card:hover{ box-shadow:0 6px 18px -8px rgba(11,79,74,0.35); transform:translateY(-1px); }
   .match-card:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
-  .match-card.decided{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .match-card.decided{
+    box-shadow:0 0 0 2px var(--gold) inset;
+    background:linear-gradient(180deg, rgba(217,164,65,0.14), rgba(217,164,65,0.05));
+  }
+  .completed-tag{
+    font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); font-weight:700;
+    margin-top:1px;
+  }
   .match-card.ongoing{ animation: pulse-live 1.6s ease-in-out infinite; }
   @keyframes pulse-live{
     0%, 100% { box-shadow:0 0 0 2px rgba(214,69,69,0.65), 0 0 0px rgba(214,69,69,0); }
@@ -696,7 +703,10 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
             <div class="court-icon"></div>
             <span class="court-label">Court ${m.court}</span>
           </div>
-          <span class="cat-tag">${CAT_LABEL[m.category]}</span>
+          <div style="text-align:right">
+            <span class="cat-tag">${CAT_LABEL[m.category]}</span>
+            ${decided ? `<div class="completed-tag">Completed</div>` : ''}
+          </div>
         </div>
         <div class="versus">
           <div class="side ${m.winner===0?'winner':''}">
