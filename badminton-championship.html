@@ -427,12 +427,12 @@
     <div class="card-head">
       <div class="eyebrow">Live table</div>
       <h2>Standings, Winner & Runner-up</h2>
-      <p>Updates automatically as match results are recorded above. Sorted by Points — Category Wins and Points Scored (right) are the tiebreakers when teams are level.</p>
+      <p>Updates automatically as match results are recorded above. Sorted by Category Points — Category Wins and Match Points Scored (right) are the tiebreakers when teams are level.</p>
     </div>
     <div class="table-scroll">
       <table id="standings-table">
         <thead>
-          <tr><th>Rank</th><th>Team</th><th class="num">Ties Played</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Category Wins</th><th class="num">Points Scored</th><th class="num">Points</th></tr>
+          <tr><th>Rank</th><th>Team</th><th class="num">Ties Played</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Category Wins</th><th class="num">Category Points</th><th class="num">Match Points Scored</th></tr>
         </thead>
         <tbody id="standings-body"></tbody>
       </table>
@@ -1099,12 +1099,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         if(tIdx > -1 && tieResults[tIdx].decided){
           const winner = tieResults[tIdx].winnerIdx;
           const loser = winner===a ? b : a;
-          return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} pts — their head-to-head tie decides it: <b>${getTeamNameSafe(winner)}</b> won that tie, so they rank above ${getTeamNameSafe(loser)}.</div>`;
+          return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} Category Points — their head-to-head tie decides it: <b>${getTeamNameSafe(winner)}</b> won that tie, so they rank above ${getTeamNameSafe(loser)}.</div>`;
         }
-        return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} pts — their head-to-head tie isn't decided yet, so for now it's ranked by category wins (${getTeamNameSafe(a)} ${stats[a].catWins} · ${getTeamNameSafe(b)} ${stats[b].catWins}), then total points scored. Winning that head-to-head tie will settle it outright.</div>`;
+        return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} Category Points — their head-to-head tie isn't decided yet, so for now it's ranked by category wins (${getTeamNameSafe(a)} ${stats[a].catWins} · ${getTeamNameSafe(b)} ${stats[b].catWins}), then total Match Points Scored. Winning that head-to-head tie will settle it outright.</div>`;
       }
       const catStr = group.map(i => `${getTeamNameSafe(i)} ${stats[i].catWins}`).join(" · ");
-      return `<div class="tie-note"><b>All three teams</b> are level at ${pts} pts — head-to-head can't resolve a 3-way cycle, so ranking currently falls to total category wins (${catStr}), then total points scored across every match.</div>`;
+      return `<div class="tie-note"><b>All three teams</b> are level at ${pts} Category Points — head-to-head can't resolve a 3-way cycle, so ranking currently falls to total category wins (${catStr}), then total Match Points Scored across every match.</div>`;
     }).join("");
   }
 
@@ -1120,8 +1120,8 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <td class="num">${stats[idx].tiesWon}</td>
         <td class="num">${stats[idx].tiesLost}</td>
         <td class="num">${stats[idx].catWins}</td>
-        <td class="num">${stats[idx].pointsScored}</td>
         <td class="num">${stats[idx].points}</td>
+        <td class="num">${stats[idx].pointsScored}</td>
       </tr>
     `).join("");
 
