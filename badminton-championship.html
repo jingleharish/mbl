@@ -303,6 +303,9 @@
   .medal{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber); margin-right:6px;}
   .sub-table-title{ margin-top:30px; font-size:19px; color:var(--court-deep);}
   .sub-table-note{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; margin-bottom:6px;}
+  .tie-note-box{ background:var(--card-alt); border-left:3px solid var(--gold); border-radius:10px; padding:12px 14px; font-size:13px; color:var(--ink-soft); line-height:1.5;}
+  .tie-note-box .tie-note + .tie-note{ margin-top:8px; }
+  .tie-note-box b{ color:var(--ink); }
 
   footer{ color:rgba(247,245,239,0.55); font-size:12.5px; text-align:center; padding-top:10px; line-height:1.6;}
   footer b{ color:rgba(247,245,239,0.8);}
@@ -434,6 +437,7 @@
         <tbody id="standings-body"></tbody>
       </table>
     </div>
+    <div id="standings-tie-note"></div>
 
     <h3 class="sub-table-title">Tie-by-tie progress</h3>
     <p class="sub-table-note">Each tie is decided at 4 category wins (best of 7). "In progress" ties still need more category matches played.</p>
@@ -1079,6 +1083,31 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
     return {stats, tieResults, order};
   }
 
+  // Explains, in plain language, why the current points-table order is what it is whenever
+  // two or more teams sit level on points — so players can see what still decides their rank.
+  function tieScenarioNote(stats, tieResults){
+    const indices = TEAM_DEFAULTS.map((_,i)=>i);
+    const byPoints = {};
+    indices.forEach(i => { (byPoints[stats[i].points] = byPoints[stats[i].points] || []).push(i); });
+    const groups = Object.values(byPoints).filter(g => g.length > 1);
+    if(groups.length === 0) return "";
+    return groups.map(group => {
+      const pts = stats[group[0]].points;
+      if(group.length === 2){
+        const [a,b] = group;
+        const tIdx = PAIRS.findIndex(pr => (pr[0]===a&&pr[1]===b)||(pr[0]===b&&pr[1]===a));
+        if(tIdx > -1 && tieResults[tIdx].decided){
+          const winner = tieResults[tIdx].winnerIdx;
+          const loser = winner===a ? b : a;
+          return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} pts — their head-to-head tie decides it: <b>${getTeamNameSafe(winner)}</b> won that tie, so they rank above ${getTeamNameSafe(loser)}.</div>`;
+        }
+        return `<div class="tie-note"><b>${getTeamNameSafe(a)}</b> and <b>${getTeamNameSafe(b)}</b> are level at ${pts} pts — their head-to-head tie isn't decided yet, so for now it's ranked by category wins (${getTeamNameSafe(a)} ${stats[a].catWins} · ${getTeamNameSafe(b)} ${stats[b].catWins}), then total points scored. Winning that head-to-head tie will settle it outright.</div>`;
+      }
+      const catStr = group.map(i => `${getTeamNameSafe(i)} ${stats[i].catWins}`).join(" · ");
+      return `<div class="tie-note"><b>All three teams</b> are level at ${pts} pts — head-to-head can't resolve a 3-way cycle, so ranking currently falls to total category wins (${catStr}), then total points scored across every match.</div>`;
+    }).join("");
+  }
+
   // ---------- RENDER: STANDINGS + BANNER ----------
   function renderStandings(){
     const {stats, tieResults, order} = computeStandings();
@@ -1094,6 +1123,9 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
         <td class="num">${stats[idx].points}</td>
       </tr>
     `).join("");
+
+    const noteHTML = tieScenarioNote(stats, tieResults);
+    document.getElementById("standings-tie-note").innerHTML = noteHTML ? `<div class="tie-note-box">${noteHTML}</div>` : "";
 
     const allDecided = tieResults.every(t=>t.decided);
     const banner = document.getElementById("status-banner");
