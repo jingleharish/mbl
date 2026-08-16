@@ -142,6 +142,17 @@
     padding:4px 10px; border-radius:100px; outline:none; cursor:text;
   }
   .slot-time:focus{ background:#fff; box-shadow:0 0 0 2px var(--amber);}
+  .schedule-filters{ display:flex; gap:16px; flex-wrap:wrap; margin:14px 0 4px; }
+  .filter-label{
+    display:flex; flex-direction:column; gap:5px; font-size:11px; letter-spacing:0.05em;
+    text-transform:uppercase; color:var(--ink-soft); font-weight:600;
+  }
+  .filter-select{
+    font-family:'Inter',sans-serif; font-size:13.5px; font-weight:500; color:var(--ink); background:#fff;
+    border:1px solid rgba(18,48,44,0.18); border-radius:8px; padding:7px 10px; cursor:pointer; min-width:160px;
+  }
+  .filter-select:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  .filter-empty{ font-size:13.5px; color:var(--ink-soft); font-style:italic; padding:18px 4px; }
   .court-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
   .match-card{
     border:1px solid rgba(18,48,44,0.1); border-radius:12px; padding:14px 16px; background:#fff;
@@ -418,6 +429,18 @@
       <div class="eyebrow">14th August 2026 · 5:00 – 7:00 PM · Play Arena, Sarjapur</div>
       <h2>Full League — Court Schedule</h2>
       <p>Slot times are editable if timings shift on the day.</p>
+    </div>
+    <div class="schedule-filters">
+      <label class="filter-label">Team
+        <select id="filter-team" class="filter-select" onchange="window.__setScheduleFilter('team', this.value)">
+          <option value="all">All teams</option>
+        </select>
+      </label>
+      <label class="filter-label">Category
+        <select id="filter-category" class="filter-select" onchange="window.__setScheduleFilter('category', this.value)">
+          <option value="all">All categories</option>
+        </select>
+      </label>
     </div>
     <div id="round1-schedule"></div>
   </section>
@@ -736,13 +759,47 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
   const SLOT_NUMBERS = [1,2,3,4,5,6];
   const MAX_PER_SLOT = 4; // matches available courts
 
+  // ---------- SCHEDULE FILTERS (view-only — doesn't affect capacity/drag logic) ----------
+  let scheduleFilter = {team:"all", category:"all"};
+  window.__setScheduleFilter = function(kind, val){
+    scheduleFilter[kind] = val;
+    renderRound1();
+  };
+
+  function populateScheduleFilterOptions(){
+    const teamSel = document.getElementById("filter-team");
+    if(teamSel){
+      const current = scheduleFilter.team;
+      teamSel.innerHTML = `<option value="all">All teams</option>` +
+        TEAM_DEFAULTS.map((_,i)=>`<option value="${i}">${getTeamNameSafe(i)}</option>`).join("");
+      teamSel.value = current;
+    }
+    const catSel = document.getElementById("filter-category");
+    if(catSel && !catSel.dataset.populated){
+      catSel.innerHTML = `<option value="all">All categories</option>` +
+        CATS.map(c=>`<option value="${c}">${CAT_LABEL[c]}</option>`).join("");
+      catSel.dataset.populated = "1";
+    }
+  }
+
+  function matchPassesFilter(m){
+    if(scheduleFilter.category !== "all" && m.category !== scheduleFilter.category) return false;
+    if(scheduleFilter.team !== "all" && !PAIRS[m.tie].includes(Number(scheduleFilter.team))) return false;
+    return true;
+  }
+
   function renderRound1(){
+    populateScheduleFilterOptions();
     const container = document.getElementById("round1-schedule");
     let html = "";
+    let anyVisible = false;
     SLOT_NUMBERS.forEach(slotNum => {
       // Slot/court are live, movable data on each match (not a fixed lookup table) — drag
       // any match card into a different slot's court-grid to reschedule it (passcode-gated).
       const slotMatches = matches.filter(m => m.slot === slotNum).sort((a,b)=> (a.court||0)-(b.court||0));
+      const visibleMatches = slotMatches.filter(matchPassesFilter);
+      if(visibleMatches.length === 0) return;
+      anyVisible = true;
       html += `
         <div class="slot-block" data-slot="${slotNum}">
           <div class="slot-title">
@@ -751,12 +808,12 @@ import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.c
             <span class="pending-tag">${slotMatches.length}/${MAX_PER_SLOT} courts used</span>
           </div>
           <div class="court-grid" data-slot="${slotNum}">
-            ${slotMatches.map(matchCardHTML).join("")}
+            ${visibleMatches.map(matchCardHTML).join("")}
           </div>
         </div>
       `;
     });
-    container.innerHTML = html;
+    container.innerHTML = anyVisible ? html : `<p class="filter-empty">No matches for this filter.</p>`;
   }
 
   // ---------- MATCH STATUS MODAL (referee view) ----------
